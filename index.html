@@ -3385,6 +3385,367 @@ html, body {
   margin-top: 8px;
   border-bottom: none;
 }
+/* ==================== 3D 可视化关卡编辑器工作台样式 ==================== */
+.ed-launch-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ed-launch-btn:active {
+  transform: scale(0.98);
+}
+body.editor-active .web-aside {
+  display: none !important;
+}
+.ed-dock {
+  display: none;
+  flex-direction: column;
+  width: 500px;
+  max-width: calc(100vw - 24px);
+  height: calc(100vh - 20px);
+  max-height: 880px;
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 18px 42px rgba(8, 22, 52, 0.22);
+  overflow: hidden;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  z-index: 90;
+}
+body.editor-active .ed-dock {
+  display: flex;
+}
+@media (max-width: 900px) {
+  body.editor-active .web-shell {
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+  }
+  body.editor-active .web-phone-stage {
+    width: 100vw;
+    height: 50vh;
+    max-height: 50vh;
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+  body.editor-active .ed-dock {
+    width: 100vw;
+    max-width: 100vw;
+    height: 50vh;
+    max-height: 50vh;
+    border-radius: 18px 18px 0 0;
+  }
+}
+.ed-head {
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ed-head-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+}
+.ed-head-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.ed-head-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ed-top-btn {
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ed-top-btn-play {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #34d399;
+}
+.ed-top-btn-active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #fbbf24;
+}
+.ed-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ed-tab-btn {
+  padding: 10px 4px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+.ed-tab-btn.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: var(--card);
+}
+.ed-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ed-card {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ed-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.ed-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+.ed-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2563eb;
+}
+.ed-input, .ed-select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+.ed-range {
+  width: 100%;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+.ed-seg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ed-seg-btn {
+  flex: 1;
+  min-width: 58px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+.ed-seg-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+.ed-color-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ed-color-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--card);
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ed-color-picker {
+  width: 26px;
+  height: 26px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.ed-queue-ball {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2);
+  border: 1.5px solid rgba(255,255,255,0.85);
+}
+.ed-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.ed-stat-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ed-stat-k {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.ed-stat-v {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--foreground);
+}
+.ed-warn-box {
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  color: #d97706;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+/* 3D 视口内嵌悬浮工具栏（旋转观察 / 3D球面画笔 / 剖层透视 / 一键试玩） */
+.ed-vp-hud {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  z-index: 86;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+body.editor-active .ed-vp-hud {
+  display: flex;
+}
+body.editor-active #wxSimOverlay {
+  display: none !important;
+}
+.ed-vp-bar {
+  background: rgba(15, 23, 42, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  pointer-events: auto;
+}
+.ed-vp-pill {
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ed-vp-pill.active {
+  background: #3b82f6;
+  border-color: #93c5fd;
+  color: #ffffff;
+}
+.ed-vp-pill.play-active {
+  background: #10b981;
+  border-color: #6ee7b7;
+  color: #ffffff;
+}
+.ed-swatch-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+.ed-swatch-btn.active {
+  border-color: #ffffff;
+  transform: scale(1.16);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+}
+.ed-vp-tip {
+  align-self: center;
+  background: rgba(15, 23, 42, 0.76);
+  color: #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
 
   </style>
 </head>
@@ -3398,6 +3759,7 @@ html, body {
         <div id="uiRoot"></div>
         <div id="fxRoot" class="pointer-none"></div>
         <div id="toastRoot" class="pointer-none"></div>
+        <div id="editorViewportHud" class="ed-vp-hud"></div>
         <div id="wxSimOverlay">
           <div class="wx-sim-capsule" title="微信小程序胶囊按钮">
             <div id="wxBtnMore" class="wx-cap-btn" role="button" aria-label="更多菜单">
@@ -3431,6 +3793,8 @@ html, body {
         <button id="sideWxSimBtn" type="button" class="web-pill-btn">切换胶囊栏</button>
       </div>
 
+      <button id="sideOpenEditorBtn" type="button" class="ed-launch-btn">🛠️ 打开 3D 可视化关卡编辑器</button>
+
       <div class="web-aside-sec">
         <div>• <b>全套原版核心机制</b>：双阶岩石珍珠、三阶闪电链能量球、螺旋桨外层色区巡航飞弹、贪吃蛇螺旋危机链、瓦森首领决战与钟摆往复旋转。</div>
         <div>• <b>全套 3D 剧场与元系统</b>：24 弹簧实时流体波浪 + 3D 冲浪小黄鸭、3D 礼盒开启剧场、瓦森半途夺晶 + 炸保险箱终章、节日火漆信封终章。</div>
@@ -3447,6 +3811,9 @@ html, body {
         <button id="sideGemsBtn" type="button" class="web-action-btn">打开宝石熔炉</button>
       </div>
     </aside>
+
+    <!-- 3D 可视化关卡编辑器工作台 -->
+    <section id="levelEditorDock" class="ed-dock"></section>
   </div>
 
   <script>
@@ -4449,6 +4816,7 @@ const PROPELLER_UNLOCK_GLOBAL = 61;     // World 3 Level 15 (Level_3-15_Propelle
 function makeColorList(rgbArray) {
   return rgbArray.map((rgb, i) => ({
     id: `c${i}`,
+    index: i,
     rgb: [rgb[0], rgb[1], rgb[2]],
     hex: rgb01ToHex(rgb)
   }));
@@ -4803,6 +5171,160 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
   };
 }
 
+/**
+ * Build a complete runtime level descriptor from a custom Level Editor specification.
+ */
+function buildCustomLevelDescriptor(spec = {}) {
+  const rawWIdx = spec.worldIndex !== undefined ? Number(spec.worldIndex) : 0;
+  const worldIdx = Math.max(1, Math.min(WORLDS.length, rawWIdx <= 25 && spec.title !== undefined ? rawWIdx + 1 : (rawWIdx || 1)));
+  const world = getWorldByIndex(worldIdx);
+  const levelType = [0, 1, 3, 4].includes(Number(spec.levelType)) ? Number(spec.levelType) : 0;
+  const patternType = Math.max(0, Math.min(10, Number(spec.patternType) || 0));
+  const rotPattern = (spec.rotPattern || spec.rotationPattern) === 'yoyo' ? 'yoyo' : 'steady';
+  const parallax = !!spec.parallax;
+  const layersCount = levelType === 4 ? 1 : Math.max(1, Math.min(5, Number(spec.layersCount) || 2));
+  const startRadius = Math.max(4, Math.min(14, Number(spec.startRadius) || 5));
+  const colorsCount = Math.max(2, Math.min(7, Number(spec.colorsCount) || 5));
+  const minSeeds = Math.max(2, Math.min(48, Number(spec.minSeeds) || 6));
+  const maxSeeds = Math.max(minSeeds, Math.min(64, Number(spec.maxSeeds) || minSeeds + 6));
+  const seed = Math.max(1, Math.floor(Number(spec.seed) || 12345));
+  const rng = seededRandom(seed);
+
+  let paletteRgb = null;
+  if (Array.isArray(spec.paletteHexes) && spec.paletteHexes.length >= 2) {
+    paletteRgb = spec.paletteHexes.slice(0, colorsCount).map((h) => {
+      const s = String(h || '#ff4d88').replace('#', '');
+      const n = parseInt(s, 16) || 0xff4d88;
+      return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+    });
+  } else if (Array.isArray(spec.paletteRgb) && spec.paletteRgb.length >= 2) {
+    paletteRgb = spec.paletteRgb.slice(0, colorsCount);
+  } else {
+    paletteRgb = ((world.palettes && world.palettes[0]) || [
+      [0.98, 0.30, 0.54],
+      [0.20, 0.80, 0.98],
+      [0.98, 0.78, 0.18],
+      [0.32, 0.90, 0.52],
+      [0.72, 0.25, 0.98]
+    ]).slice(0, colorsCount);
+  }
+  const colors = makeColorList(paletteRgb);
+
+  const glassShields = Math.max(0, Math.min(12, Number(spec.glassShields) || 0));
+  const metalShields = Math.max(0, Math.min(10, Number(spec.metalShields) || 0));
+  const shieldExtraBalls = Math.max(0, Math.min(30, Number(spec.shieldExtraBalls !== undefined ? spec.shieldExtraBalls : (glassShields + metalShields > 0 ? 5 : 0))));
+  const shieldCfg = (glassShields + metalShields > 0) ? { extraBalls: shieldExtraBalls } : null;
+
+  const autoShots = spec.autoShots !== false;
+  const computedShots = computeOfficialShotBudget(
+    layersCount,
+    startRadius,
+    colors.length,
+    shieldCfg,
+    0,
+    world.ballAdj || 0
+  );
+  const shots = autoShots
+    ? computedShots
+    : Math.max(1, Math.min(99, Number(spec.shots) || computedShots));
+
+  const maxOuterRadius = startRadius + Math.max(0, layersCount - 1);
+  const rotSpeeds = Array.isArray(spec.rotSpeeds) ? spec.rotSpeeds : [];
+  const layers = [];
+  for (let l = 0; l < layersCount; l++) {
+    const rWorld = startRadius + (layersCount - 1 - l);
+    const count = Math.floor(Math.pow(rWorld / 0.23, 2) * 0.85);
+    const clampedCount = Math.min(780, Math.max(120, count));
+    const rawSpd = rotSpeeds[l] !== undefined ? Number(rotSpeeds[l]) : (rotPattern === 'yoyo' ? 0.42 : 0.25);
+    const rotRad = Math.abs(rawSpd) <= 2.5 ? rawSpd : (rawSpd * Math.PI) / 180;
+    const finalRad = parallax && l % 2 === 1 ? -Math.abs(rotRad) : rotRad;
+    layers.push({
+      index: l,
+      radius: rWorld,
+      count: clampedCount,
+      seeds: Math.max(colors.length, Math.round(minSeeds + rng() * Math.max(0, maxSeeds - minSeeds))),
+      rotSpeedRad: finalRad
+    });
+  }
+
+  const rawRock = Number(spec.rockChance) || 0;
+  const rockChance = Math.max(0, Math.min(1, rawRock > 1 ? rawRock / 100 : rawRock));
+  const rawProp = Number(spec.propellerChance) || 0;
+  const propellerChance = Math.max(0, Math.min(1, rawProp > 1 ? rawProp / 100 : rawProp));
+  const satCount = Math.max(0, Math.min(4, Number(spec.satellites) || 0));
+  const satType = spec.satelliteType || spec.satelliteKind || 'coin';
+
+  const titleZh = String(spec.titleZh || spec.title || '自定义编辑关卡');
+  return {
+    isCustom: true,
+    configName: spec.configName || 'Custom_Editor_Level',
+    modeTag: 'custom',
+    globalLevel: Number(spec.globalLevel || spec.level) || 35,
+    worldIndex: world.index,
+    worldNameEn: `第 ${world.index} 星球`,
+    worldNameZh: `第 ${world.index} 星球`,
+    levelInWorld: 1,
+    displayTitleEn: titleZh,
+    displayTitleZh: titleZh,
+    levelType,
+    patternType,
+    rotPattern,
+    startRadius,
+    maxOuterRadius,
+    colors,
+    shots,
+    computedShots,
+    autoShots,
+    layers,
+    glassShields,
+    metalShields,
+    shields: { glass: glassShields, metal: metalShields, extraBalls: shieldExtraBalls },
+    warsonShields: levelType === 3 || !!spec.warsonShields,
+    shieldRotSpeedDeg: spec.shieldRotSpeedDeg !== undefined ? Number(spec.shieldRotSpeedDeg) : 18,
+    shieldExtraBalls,
+    satellites: satCount,
+    satelliteType: satType,
+    propellerChance,
+    rockChance,
+    hasColorBomb: !!spec.hasColorBomb,
+    bonusCoinsCount: spec.bonusCoinsCount !== undefined
+      ? Math.max(0, Math.min(30, Number(spec.bonusCoinsCount) || 0))
+      : (levelType === 1 ? 10 : 0),
+    warsonBoss: levelType === 3
+      ? {
+          maxHp: Math.max(1, Math.min(30, Number(spec.warsonHp || spec.warsonMaxHp || (spec.warsonBoss && spec.warsonBoss.maxHp)) || 4)),
+          damageCooldown: Math.max(0.15, Math.min(3.0, Number(spec.warsonCooldown || (spec.warsonBoss && spec.warsonBoss.damageCooldown)) || 0.45))
+        }
+      : null,
+    snakeConfig: levelType === 4
+      ? {
+          segments: Math.max(12, Math.min(90, Number(spec.snakeSegments || (spec.snakeConfig && spec.snakeConfig.segments)) || 44)),
+          speed: Math.max(0.012, Math.min(0.12, (Number(spec.snakeSpeed) > 0.2 ? Number(spec.snakeSpeed) * 0.015 : Number(spec.snakeSpeed)) || 0.038)),
+          radius: startRadius
+        }
+      : null,
+    noStar: spec.noStar !== undefined ? !!spec.noStar : (levelType === 1 || levelType === 4),
+    noSwitch: !!spec.noSwitch,
+    noDouble: !!spec.noDouble,
+    noSpecial: !!spec.noSpecial,
+    starMaxHits: Math.max(1, Math.min(10, Number(spec.starMaxHits) || 5)),
+    streakRewardType: spec.streakRewardType || null,
+    forceBall: spec.forceBall || null,
+    fixedShooterQueue: Array.isArray(spec.fixedShooterQueue) ? spec.fixedShooterQueue.slice() : [],
+    initialBoosters: spec.initialBoosters || null,
+    gift: null,
+    parallax,
+    seed,
+    tutorial: null,
+    bgTop: spec.bgTop || (levelType === 3 ? '#3a1057' : world.bgTop),
+    bgBot: spec.bgBot || (levelType === 3 ? '#6d1e8c' : world.bgBot),
+    patSprite: spec.patSprite || spec.patternSprite || (levelType === 3 ? 'pat_warson.png' : world.pat),
+    decorSprite: spec.decorSprite !== undefined ? spec.decorSprite : world.decor,
+    planetCol: world.planetCol,
+    pearlOverrides: spec.pearlOverrides ? JSON.parse(JSON.stringify(spec.pearlOverrides)) : {}
+  };
+}
+
 module.exports = {
   WORLDS,
   WORLD_RANGES,
@@ -4831,8 +5353,11 @@ module.exports = {
   getWorldRangeForGlobalLevel,
   getWorldByIndex,
   getDailyStagesForDate,
-  resolveLevelDescriptor
+  computeOfficialShotBudget,
+  resolveLevelDescriptor,
+  buildCustomLevelDescriptor
 };
+
 
 
 });
@@ -5833,10 +6358,16 @@ class PearlSphere {
     this.rotAxis = norm3({ x: 0.08, y: 1.0, z: 0.14 });
     this.shieldQuat = quatIdentity();
     this.shieldRotAxis = norm3({ x: 0.25, y: 1.0, z: -0.18 });
-    this.shieldRotSpeed = 0.34;
+    this.shieldRotSpeed = descriptor.shieldRotSpeedDeg !== undefined
+      ? (Number(descriptor.shieldRotSpeedDeg) * Math.PI) / 180
+      : 0.34;
 
     this.layerQuats = descriptor.layers.map(() => quatIdentity());
-    this.layerSpeeds = descriptor.layers.map((l) => l.rotSpeedRad || 0.24);
+    this.layerSpeeds = descriptor.layers.map((l) => (l.rotSpeedRad !== undefined ? l.rotSpeedRad : 0.24));
+
+    this.editorFreezeRotation = false;
+    this.editorMinLayer = 0;
+    this.editorMaxLayer = 99;
 
     this.pearls = [];
     this.layerPearls = [];
@@ -5883,6 +6414,9 @@ class PearlSphere {
       this._buildHexShields(rng);
       this._buildSatellites();
       this._buildWarsonBoss();
+    }
+    if (descriptor.pearlOverrides && Object.keys(descriptor.pearlOverrides).length > 0) {
+      this.applyPearlOverrides(descriptor.pearlOverrides);
     }
     this.activeOuterRadius = this.getCurrentOuterRadius();
     this.updateWorldPositions();
@@ -6448,7 +6982,7 @@ class PearlSphere {
     const hexScale = Math.max(1.68, outerR * 0.34);
     const pts = generateFibonacciSphere(Math.max(10, total * 2), 1.0, 0.42);
     const candidates = pts.filter((p) => Math.abs(p.y) < 0.72);
-    const isWarson = this.descriptor.levelType === 3;
+    const isWarson = this.descriptor.levelType === 3 || !!this.descriptor.warsonShields;
 
     for (let i = 0; i < total; i++) {
       const c = candidates[i % candidates.length] || pts[i % pts.length];
@@ -6480,8 +7014,13 @@ class PearlSphere {
     if (count <= 0) return;
     const outerR = (this.descriptor.layers[0] && this.descriptor.layers[0].radius) || 5.0;
     const orbitR = outerR + 1.38;
+    const satType = this.descriptor.satelliteType || 'coin';
     for (let i = 0; i < count; i++) {
-      const kind = i === 0 ? (this.descriptor.satelliteType || 'coin') : 'coin';
+      const kind = satType === 'mixed'
+        ? (i % 2 === 0 ? 'star' : 'coin')
+        : satType === 'star'
+          ? (i === 0 ? 'star' : 'coin')
+          : 'coin';
       const ringOffset = i * 0.56;
       this.satellites.push({
         id: i + 1,
@@ -6583,25 +7122,27 @@ class PearlSphere {
   }
 
   step(dt) {
-    this.rotElapsed += dt;
+    if (!this.editorFreezeRotation) {
+      this.rotElapsed += dt;
 
-    if (this.isSnakeLevel) {
-      const aliveCount = this.pearls.reduce((acc, p) => acc + (p.alive ? 1 : 0), 0);
-      if (aliveCount > 0 && !this.snakeReachedEnd) {
-        this.snakeProgress = Math.min(1.0, this.snakeProgress + this.snakeSpeed * dt);
-        if (this.snakeProgress >= 1.0) {
-          this.snakeReachedEnd = true;
+      if (this.isSnakeLevel) {
+        const aliveCount = this.pearls.reduce((acc, p) => acc + (p.alive ? 1 : 0), 0);
+        if (aliveCount > 0 && !this.snakeReachedEnd) {
+          this.snakeProgress = Math.min(1.0, this.snakeProgress + this.snakeSpeed * dt);
+          if (this.snakeProgress >= 1.0) {
+            this.snakeReachedEnd = true;
+          }
         }
+      } else {
+        // LevelRotationPattern: 'steady' vs 'yoyo' (oscillating EaseInOutSine)
+        const rotMod = this.rotPattern === 'yoyo' ? Math.cos(this.rotElapsed * 1.32) * 1.35 : 1.0;
+        for (let l = 0; l < this.layerQuats.length; l++) {
+          const dq = quatFromAxisAngle(this.rotAxis, this.layerSpeeds[l] * rotMod * dt);
+          this.layerQuats[l] = quatNormalize(quatMultiply(dq, this.layerQuats[l]));
+        }
+        const sq = quatFromAxisAngle(this.shieldRotAxis, this.shieldRotSpeed * dt);
+        this.shieldQuat = quatNormalize(quatMultiply(sq, this.shieldQuat));
       }
-    } else {
-      // LevelRotationPattern: 'steady' vs 'yoyo' (oscillating EaseInOutSine)
-      const rotMod = this.rotPattern === 'yoyo' ? Math.cos(this.rotElapsed * 1.32) * 1.35 : 1.0;
-      for (let l = 0; l < this.layerQuats.length; l++) {
-        const dq = quatFromAxisAngle(this.rotAxis, this.layerSpeeds[l] * rotMod * dt);
-        this.layerQuats[l] = quatNormalize(quatMultiply(dq, this.layerQuats[l]));
-      }
-      const sq = quatFromAxisAngle(this.shieldRotAxis, this.shieldRotSpeed * dt);
-      this.shieldQuat = quatNormalize(quatMultiply(sq, this.shieldQuat));
     }
 
     this.starSpinAngle += dt * (this.starActivated ? 3.2 : 1.3);
@@ -7336,9 +7877,374 @@ class PearlSphere {
     if (this.isSnakeLevel) return rem <= 0;
     return rem <= 0 || this.getClearRatio() >= 0.975;
   }
+
+  /**
+   * Recomputes all connected ColorZones, bonusCoin counts, and rock flags across all shells
+   * after interactive 3D brush painting or applying pearlOverrides.
+   */
+  rebuildAllColorZones() {
+    if (this.isSnakeLevel) {
+      this._relinkSnakeNeighbors();
+      this._rebuildSnakeZones();
+      return;
+    }
+    this.colorZones = [];
+    this.layerColorZones = [];
+    this.totalBonusCoins = 0;
+    let zoneIdSeq = 1;
+
+    for (let l = 0; l < this.layerPearls.length; l++) {
+      const shellList = this.layerPearls[l];
+      for (let i = 0; i < shellList.length; i++) {
+        shellList[i].shellIndex = i;
+        shellList[i].colorZone = null;
+        if (shellList[i].isBonusCoin) this.totalBonusCoins++;
+      }
+
+      const seen = new Set();
+      const shellZones = [];
+      for (let i = 0; i < shellList.length; i++) {
+        const start = shellList[i];
+        if (!start.alive || start.isColorBomb || seen.has(start.id)) continue;
+        const comp = [start];
+        seen.add(start.id);
+        let sx = 0, sy = 0, sz = 0;
+        let head = 0;
+        while (head < comp.length) {
+          const cur = comp[head++];
+          sx += cur.localPos.x;
+          sy += cur.localPos.y;
+          sz += cur.localPos.z;
+          for (let k = 0; k < cur.neighbors.length; k++) {
+            const nb = cur.neighbors[k];
+            if (nb.alive && !nb.isColorBomb && !seen.has(nb.id) && nb.color.id === start.color.id) {
+              seen.add(nb.id);
+              comp.push(nb);
+            }
+          }
+        }
+        const avg = { x: sx / comp.length, y: sy / comp.length, z: sz / comp.length };
+        let centerPearl = comp[0];
+        let bestD = Infinity;
+        for (let k = 0; k < comp.length; k++) {
+          const d = distSq3(comp[k].localPos, avg);
+          if (d < bestD) {
+            bestD = d;
+            centerPearl = comp[k];
+          }
+        }
+        const hasRock = comp.some((cp) => cp.hasRock);
+        const cz = {
+          id: zoneIdSeq++,
+          layer: l,
+          color: start.color,
+          pearls: comp,
+          centerPearl,
+          isPole: Math.abs(centerPearl.localDir.y) > 0.80,
+          hasRock,
+          targetedByPropeller: false,
+          ionized: 0
+        };
+        for (let k = 0; k < comp.length; k++) {
+          comp[k].colorZone = cz;
+        }
+        shellZones.push(cz);
+        this.colorZones.push(cz);
+      }
+      this.layerColorZones.push(shellZones);
+    }
+  }
+
+  /**
+   * Apply a map of per-pearl overrides keyed by "layer:index".
+   */
+  applyPearlOverrides(overridesMap) {
+    if (!overridesMap || typeof overridesMap !== 'object') return;
+    const keys = Object.keys(overridesMap);
+    for (let k = 0; k < keys.length; k++) {
+      const key = keys[k];
+      const ov = overridesMap[key];
+      if (!ov) continue;
+      const parts = key.split(':');
+      const l = Number(parts[0]);
+      const idx = Number(parts[1]);
+      const shell = this.layerPearls[l];
+      if (!shell || !shell[idx]) continue;
+      const p = shell[idx];
+      if (ov.colorIdx !== undefined && ov.colorIdx >= 0 && this.colors[ov.colorIdx]) {
+        p.color = this.colors[ov.colorIdx];
+        p.isColorBomb = false;
+      }
+      if (ov.isColorBomb !== undefined) {
+        p.isColorBomb = !!ov.isColorBomb;
+        if (p.isColorBomb) {
+          p.color = COLOR_BOMB_COLOR;
+          p.hasRock = false;
+          p.isRock = false;
+          p.isPropeller = false;
+          p.isBonusCoin = false;
+        } else if (p.color.id === 'colorbomb') {
+          p.color = this.colors[0];
+        }
+      }
+      if (ov.hasRock !== undefined && !p.isColorBomb) {
+        p.hasRock = !!ov.hasRock;
+        p.isRock = !!ov.hasRock;
+      }
+      if (ov.isPropeller !== undefined && !p.isColorBomb) {
+        p.isPropeller = !!ov.isPropeller;
+      }
+      if (ov.isBonusCoin !== undefined && !p.isColorBomb) {
+        p.isBonusCoin = !!ov.isBonusCoin;
+      }
+      if (ov.erased) {
+        p.alive = false;
+      }
+    }
+    this.pearlOverrides = this.descriptor.pearlOverrides;
+    this.rebuildAllColorZones();
+  }
+
+  /**
+   * Raycast from camera ray (rayOrigin, rayDir) against visible pearls (respecting editorMinLayer..editorMaxLayer).
+   */
+  raycastVisiblePearl(rayOrigin, rayDir) {
+    const minL = this.editorMinLayer || 0;
+    const maxL = this.editorMaxLayer !== undefined ? this.editorMaxLayer : 99;
+    const sc = this.spawnScale || 1.0;
+    let bestPearl = null;
+    let bestT = Infinity;
+
+    for (let i = 0; i < this.pearls.length; i++) {
+      const p = this.pearls[i];
+      if (!p.alive || p.editorHidden) continue;
+      if (p.layer < minL || p.layer > maxL) continue;
+      const wp = p.worldPos;
+      const ocX = wp.x - rayOrigin.x;
+      const ocY = wp.y - rayOrigin.y;
+      const ocZ = wp.z - rayOrigin.z;
+      const proj = ocX * rayDir.x + ocY * rayDir.y + ocZ * rayDir.z;
+      if (proj <= 0) continue;
+      const perpSq = (ocX * ocX + ocY * ocY + ocZ * ocZ) - proj * proj;
+      const hitR = p.radius * sc * 1.16;
+      if (perpSq <= hitR * hitR && proj < bestT) {
+        bestT = proj;
+        bestPearl = p;
+      }
+    }
+    return bestPearl;
+  }
+
+  /**
+   * Paint a pearl (or neighbor cluster / entire ColorZone) with the 3D Editor Brush and record into descriptor.pearlOverrides!
+   */
+  paintPearl(hitPearl, brushSpec = {}) {
+    if (!hitPearl || !hitPearl.alive) return 0;
+    if (!this.descriptor.pearlOverrides) this.descriptor.pearlOverrides = {};
+    this.pearlOverrides = this.descriptor.pearlOverrides;
+
+    const rawScope = brushSpec.scope || 'single';
+    const scope = rawScope === 'neighbor' ? 'cluster' : rawScope; // 'single' | 'cluster' | 'zone'
+    let targets = [hitPearl];
+    if (scope === 'cluster') {
+      targets = [hitPearl].concat((hitPearl.neighbors || []).filter((nb) => nb.alive));
+    } else if (scope === 'zone' && hitPearl.colorZone && hitPearl.colorZone.pearls) {
+      targets = hitPearl.colorZone.pearls.filter((zp) => zp.alive);
+    }
+
+    const rawTool = brushSpec.tool || brushSpec.mode || 'color';
+    const tool = rawTool === 'normal' ? 'clear' : rawTool;
+    const rawCIdx = brushSpec.colorIdx !== undefined ? brushSpec.colorIdx : brushSpec.colorIndex;
+    const colorIdx = Math.max(0, Math.min(this.colors.length - 1, Number(rawCIdx) || 0));
+
+    for (let i = 0; i < targets.length; i++) {
+      const p = targets[i];
+      const sIdx = p.shellIndex !== undefined
+        ? p.shellIndex
+        : (this.layerPearls[p.layer] ? this.layerPearls[p.layer].indexOf(p) : -1);
+      if (sIdx < 0) continue;
+      const key = `${p.layer}:${sIdx}`;
+      const rec = this.descriptor.pearlOverrides[key] || {};
+
+      if (tool === 'color') {
+        p.color = this.colors[colorIdx] || this.colors[0];
+        if (p.isColorBomb) p.isColorBomb = false;
+        rec.colorIdx = colorIdx;
+        rec.isColorBomb = false;
+      } else if (tool === 'rock') {
+        p.isColorBomb = false;
+        if (p.color.id === 'colorbomb') p.color = this.colors[0];
+        p.hasRock = true;
+        p.isRock = true;
+        rec.hasRock = true;
+        rec.special = 'rock';
+        rec.isColorBomb = false;
+      } else if (tool === 'colorbomb') {
+        if (i > 0 && scope !== 'single') continue;
+        p.isColorBomb = true;
+        p.color = COLOR_BOMB_COLOR;
+        p.hasRock = false;
+        p.isRock = false;
+        p.isPropeller = false;
+        p.isBonusCoin = false;
+        rec.isColorBomb = true;
+        rec.special = 'colorbomb';
+        rec.hasRock = false;
+        rec.isPropeller = false;
+        rec.isBonusCoin = false;
+      } else if (tool === 'propeller') {
+        if (i > 0 && scope === 'zone') continue;
+        p.isColorBomb = false;
+        if (p.color.id === 'colorbomb') p.color = this.colors[0];
+        p.hasRock = false;
+        p.isRock = false;
+        p.isPropeller = true;
+        rec.isPropeller = true;
+        rec.special = 'propeller';
+        rec.hasRock = false;
+        rec.isColorBomb = false;
+      } else if (tool === 'coin') {
+        if (i > 0 && scope === 'zone') continue;
+        p.isColorBomb = false;
+        if (p.color.id === 'colorbomb') p.color = this.colors[0];
+        p.hasRock = false;
+        p.isRock = false;
+        p.isBonusCoin = true;
+        rec.isBonusCoin = true;
+        rec.special = 'coin';
+        rec.hasRock = false;
+        rec.isColorBomb = false;
+      } else if (tool === 'erase') {
+        p.alive = false;
+        rec.erased = true;
+      } else if (tool === 'clear') {
+        p.hasRock = false;
+        p.isRock = false;
+        p.isPropeller = false;
+        p.isBonusCoin = false;
+        if (p.isColorBomb) {
+          p.isColorBomb = false;
+          p.color = this.colors[0];
+        }
+        rec.hasRock = false;
+        rec.isPropeller = false;
+        rec.isBonusCoin = false;
+        rec.isColorBomb = false;
+        rec.special = 'none';
+      }
+      p.highlight = 1.0;
+      this.descriptor.pearlOverrides[key] = rec;
+      this.descriptor.pearlOverrides[p.id] = rec;
+    }
+
+    this.rebuildAllColorZones();
+    return targets.length;
+  }
+
+  /**
+   * Real-time Level Solvability & Difficulty Diagnostics for the 3D Level Editor!
+   */
+  computeLevelDiagnostics() {
+    const layerCounts = this.layerPearls.map((arr) => arr.filter((p) => p.alive).length);
+    const totalPearls = layerCounts.reduce((a, b) => a + b, 0);
+    const aliveZones = this.colorZones.filter((cz) => cz.pearls.some((p) => p.alive));
+    const totalZones = aliveZones.length;
+    const avgZoneSize = totalZones > 0 ? Math.round((totalPearls / totalZones) * 10) / 10 : totalPearls;
+
+    let rockPearls = 0;
+    let propellerPearls = 0;
+    let colorBombPearls = 0;
+    let bonusCoinPearls = 0;
+    const colorBreakdown = {};
+    for (let c = 0; c < this.colors.length; c++) {
+      colorBreakdown[this.colors[c].id] = {
+        hex: this.colors[c].hex,
+        count: 0,
+        zones: 0
+      };
+    }
+    for (let i = 0; i < this.pearls.length; i++) {
+      const p = this.pearls[i];
+      if (!p.alive) continue;
+      if (p.hasRock) rockPearls++;
+      if (p.isPropeller) propellerPearls++;
+      if (p.isColorBomb) colorBombPearls++;
+      if (p.isBonusCoin) bonusCoinPearls++;
+      if (colorBreakdown[p.color.id]) {
+        colorBreakdown[p.color.id].count++;
+      }
+    }
+    for (let z = 0; z < aliveZones.length; z++) {
+      const cid = aliveZones[z].color.id;
+      if (colorBreakdown[cid]) colorBreakdown[cid].zones++;
+    }
+
+    // Outer layer clearable zones + inner layer support estimate
+    const outerZones = (this.layerColorZones[0] || []).length;
+    const shieldPenalty = Math.ceil((this.descriptor.glassShields || 0) * 0.6 + (this.descriptor.metalShields || 0) * 1.2);
+    const rockPenalty = Math.ceil(rockPearls / 14);
+    const bossPenalty = this.descriptor.levelType === 3 && this.warsonBoss ? this.warsonBoss.maxHp : 0;
+    const minTheoreticalShots = Math.max(
+      4,
+      Math.round(outerZones * 0.65 + (this.layerPearls.length - 1) * 4.5 + shieldPenalty + rockPenalty + bossPenalty - propellerPearls * 0.7 - colorBombPearls * 3)
+    );
+    const configuredShots = this.descriptor.shots || 20;
+    const shotMargin = configuredShots - minTheoreticalShots;
+
+    let budgetStatus = '适中平衡';
+    if (shotMargin >= 12) budgetStatus = '充裕宽松';
+    else if (shotMargin >= 4) budgetStatus = '适中平衡';
+    else if (shotMargin >= 0) budgetStatus = '紧凑刺激';
+    else budgetStatus = '极限挑战（建议增加发球数）';
+
+    const warnings = [];
+    const initBoosters = this.descriptor.initialBoosters || {};
+    const bombAvailable = !this.descriptor.noSpecial && (this.descriptor.forceBall === 'bomb' || (initBoosters.bomb || 0) > 0);
+    if ((rockPearls > 0 || (this.descriptor.metalShields || 0) > 0) && this.descriptor.noSpecial && this.descriptor.forceBall !== 'bomb') {
+      warnings.push('⚠️ 当前存在岩石壳或金属护盾，但禁用了下方道具球栏，建议开启炸弹球！');
+    } else if (rockPearls > 20 && !bombAvailable) {
+      warnings.push('💡 岩石覆盖较多，建议在「本关球与规则」中配置初始炸弹球或开启星核充能。');
+    }
+    if (shotMargin < 0) {
+      warnings.push(`⚠️ 配置球数 (${configuredShots}) 低于理论推进球数 (~${minTheoreticalShots})，通关难度极高。`);
+    }
+
+    let diffScore = 1;
+    if (this.colors.length >= 5) diffScore++;
+    if (this.layerPearls.length >= 3) diffScore++;
+    if (rockPearls > 0 || (this.descriptor.metalShields || 0) > 0 || this.descriptor.levelType >= 3) diffScore++;
+    if (shotMargin <= 3 || this.rotPattern === 'yoyo') diffScore++;
+    diffScore = Math.max(1, Math.min(5, diffScore));
+    const stars = '★'.repeat(diffScore) + '☆'.repeat(5 - diffScore);
+
+    return {
+      totalPearls,
+      layerCounts,
+      perLayerCounts: layerCounts,
+      totalZones,
+      colorZonesCount: totalZones,
+      avgZoneSize,
+      rockPearls,
+      propellerPearls,
+      colorBombPearls,
+      bonusCoinPearls,
+      minTheoreticalShots,
+      estimatedMinShots: minTheoreticalShots,
+      configuredShots,
+      shotMargin,
+      budgetStatus,
+      difficultyStars: diffScore,
+      difficultyStarsStr: stars,
+      difficultyScore: diffScore,
+      warnings,
+      colorBreakdown: Object.values(colorBreakdown),
+      overridesCount: this.descriptor.pearlOverrides ? Object.keys(this.descriptor.pearlOverrides).length : 0
+    };
+  }
 }
 
 module.exports = { PearlSphere };
+
 
 });
 
@@ -9685,9 +10591,12 @@ class WebGLPearlRenderer {
     if (sphere) {
       const pearls = sphere.pearls;
       const sc = sphere.spawnScale;
+      const minVisL = sphere.editorMinLayer || 0;
+      const maxVisL = sphere.editorMaxLayer !== undefined ? sphere.editorMaxLayer : 99;
       for (let i = 0; i < pearls.length; i++) {
         const p = pearls[i];
-        if (!p.alive) continue;
+        if (!p.alive || p.editorHidden) continue;
+        if (p.layer < minVisL || p.layer > maxVisL) continue;
         const rgb = p.color.rgb;
         const isIonized = p.ionized > 0.05 || (p.colorZone && p.colorZone.ionized > 0.05);
         let matType = 0.0;
@@ -10101,7 +11010,8 @@ const {
   CONTINUE_COST_COINS,
   CONTINUE_EXTRA_SHOTS,
   getDailyStagesForDate,
-  resolveLevelDescriptor
+  resolveLevelDescriptor,
+  buildCustomLevelDescriptor
 } = require('./levels');
 const { createCamera, dist3, distSq3, sub3, norm3, hexToRgb01 } = require('./math3d');
 const { PearlSphere } = require('./sphere');
@@ -10872,25 +11782,162 @@ class PearlGemEngine {
     this.startLevel(this.storage.data.level || 1, HOLIDAY_SPARKLE_NAMES[idx]);
   }
 
+  /**
+   * Load and start a custom Level Editor specification or descriptor directly in the 3D engine.
+   */
+  startCustomLevel(customSpecOrDesc, options = {}) {
+    if (this._pourAnimActive) {
+      this._pourAnimActive = false;
+    }
+    const desc = (customSpecOrDesc && Array.isArray(customSpecOrDesc.colors) && Array.isArray(customSpecOrDesc.layers))
+      ? customSpecOrDesc
+      : buildCustomLevelDescriptor(customSpecOrDesc || {});
+    this.isCustomLevel = true;
+    this.levelDescriptor = desc;
+    this.bgTopHex = desc.bgTop;
+    this.bgBotHex = desc.bgBot;
+    this.bgPatSprite = desc.patSprite;
+
+    const prevQuats = options.preserveRotation && this.sphere ? this.sphere.layerQuats.slice() : null;
+    const prevFreeze = this.sphere ? this.sphere.editorFreezeRotation : false;
+    const prevMinL = this.sphere ? this.sphere.editorMinLayer : 0;
+    const prevMaxL = this.sphere && this.sphere.editorMaxLayer !== undefined ? this.sphere.editorMaxLayer : 99;
+
+    this._syncPlayfieldLayout(desc.maxOuterRadius || 6.0);
+    if (!options.silent) this._triggerIris();
+
+    this.sphere = new PearlSphere(desc);
+    this.sphere.spawnScale = options.silent ? 1.0 : 0.85;
+    if (typeof this.sphereCenterY === 'number') {
+      this.sphere.center.y = this.sphereCenterY;
+    }
+    if (prevQuats) {
+      for (let l = 0; l < Math.min(prevQuats.length, this.sphere.layerQuats.length); l++) {
+        this.sphere.layerQuats[l] = prevQuats[l];
+      }
+    }
+    if (options.preserveEditorFlags) {
+      this.sphere.editorFreezeRotation = prevFreeze;
+      this.sphere.editorMinLayer = prevMinL;
+      this.sphere.editorMaxLayer = prevMaxL;
+    }
+    if (options.freezeRotation !== undefined) {
+      this.sphere.editorFreezeRotation = !!options.freezeRotation;
+    }
+    if (options.editorMode !== undefined) {
+      this.editorMode = options.editorMode;
+    }
+    this.sphere.updateWorldPositions();
+
+    this.shotsLeft = desc.shots;
+    this.pearlsThisRun = 0;
+    this.coinsThisRun = 0;
+    this._runColorHexes = [];
+    this.starStreak = 0;
+    this.starMaxHits = desc.starMaxHits || 5;
+    this.starMeterPct = 0;
+    this.starAlertBanner = false;
+    this._starAlertTimer = 0;
+    this.streakRewardClaimed = false;
+    this._doubleSwitchCount = 0;
+    this._rescueSatelliteSpawned = false;
+    this.comboCount = 0;
+    this.comboText = '';
+    this._comboTimer = 0;
+    this._missFlashTimer = 0;
+    this.winBonusPearlsAnim = 0;
+    this.postWinFlow = false;
+    this.halfwayGiftBanner = false;
+    this._planetAnimPct = null;
+    this.streakRewardType = !desc.noStar ? (desc.streakRewardType || null) : null;
+
+    if (desc.initialBoosters && typeof desc.initialBoosters === 'object') {
+      if (desc.initialBoosters.rainbow !== undefined) this.storage.data.rainbowBalls = Math.max(0, Number(desc.initialBoosters.rainbow) || 0);
+      if (desc.initialBoosters.bomb !== undefined) this.storage.data.bombBalls = Math.max(0, Number(desc.initialBoosters.bomb) || 0);
+      if (desc.initialBoosters.propeller !== undefined) this.storage.data.propellerBalls = Math.max(0, Number(desc.initialBoosters.propeller) || 0);
+      this.storage.save();
+    }
+
+    this.tutorialActive = false;
+    this.tutorialKey = '';
+    this.tutorialAction = '';
+    this.activeBooster = desc.forceBall || null;
+    this.reloadTimer = 0;
+    this.swapAnim = 0;
+    this.shooterRecoil = 0;
+    this.loseGraceTimer = 0;
+    this.introBannerTimer = options.silent ? 0 : 1.5;
+    this.inGameSettingsOpen = false;
+    this.quitConfirmOpen = false;
+    this.activeEventModal = null;
+    this.floatingHitText = '';
+    this._floatingHitAccum = 0;
+    this._floatingHitTimer = 0;
+    this.funnelPopupText = '';
+    this._funnelPopupTimer = 0;
+
+    this.flyingBalls = [];
+    this.fallingPearls = [];
+    this.homingMissiles = [];
+    this.activeColorBomb = null;
+    this.lightningBolts = [];
+    this.shieldShards = [];
+    this.shockwaves = [];
+    this.particles = [];
+    this.cancelAim();
+
+    this.mode = 'playing';
+    this.sceneMode = 'gameplay';
+    this._shooterQueueCursor = 0;
+
+    this._rollInitialBalls();
+    const mood = desc.levelType === 3
+      ? 'warson'
+      : desc.levelType === 1
+        ? 'bonus'
+        : desc.levelType === 4
+          ? 'snake'
+          : 'playing';
+    this.audio.setBgmMood(mood);
+    this.audio.syncBgm();
+    this._emitUIState();
+    return desc;
+  }
+
+  _pickFromFixedQueueOrPool(pool, excludeColorId = null) {
+    const q = this.levelDescriptor && this.levelDescriptor.fixedShooterQueue;
+    if (Array.isArray(q) && q.length > 0 && (this._shooterQueueCursor || 0) < q.length) {
+      const cIdx = Number(q[this._shooterQueueCursor]);
+      this._shooterQueueCursor = (this._shooterQueueCursor || 0) + 1;
+      const chosen = this.sphere.colors[cIdx];
+      if (chosen) return chosen;
+    }
+    if (excludeColorId) {
+      const other = pool.filter((c) => c.id !== excludeColorId);
+      if (other.length > 0 && Math.random() < 0.78) {
+        return other[Math.floor(Math.random() * other.length)];
+      }
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
   _rollInitialBalls() {
+    this._shooterQueueCursor = 0;
     const pool = this.sphere.getRemainingColorPool();
-    this.currentBallColor = pool[Math.floor(Math.random() * pool.length)];
-    const other = pool.filter((c) => c.id !== this.currentBallColor.id);
-    this.nextBallColor = other.length > 0
-      ? other[Math.floor(Math.random() * other.length)]
-      : this.currentBallColor;
+    this.currentBallColor = this._pickFromFixedQueueOrPool(pool, null);
+    this.nextBallColor = this._pickFromFixedQueueOrPool(pool, this.currentBallColor ? this.currentBallColor.id : null);
   }
 
   _advanceBallQueue() {
     const pool = this.sphere.getRemainingColorPool();
-    if (!pool.some((c) => c.id === this.nextBallColor.id)) {
+    const q = this.levelDescriptor && this.levelDescriptor.fixedShooterQueue;
+    const hasMoreFixed = Array.isArray(q) && (this._shooterQueueCursor || 0) < q.length;
+    if (!hasMoreFixed && !pool.some((c) => c.id === this.nextBallColor.id)) {
       this.currentBallColor = pool[Math.floor(Math.random() * pool.length)];
     } else {
       this.currentBallColor = this.nextBallColor;
     }
-    const other = pool.filter((c) => c.id !== this.currentBallColor.id);
-    const pickPool = other.length > 0 && Math.random() < 0.76 ? other : pool;
-    this.nextBallColor = pickPool[Math.floor(Math.random() * pickPool.length)];
+    this.nextBallColor = this._pickFromFixedQueueOrPool(pool, this.currentBallColor ? this.currentBallColor.id : null);
   }
 
   // ==================== ZERO-MISFIRE SWAP & SPECIAL BALLS ====================
@@ -10981,13 +12028,14 @@ class PearlGemEngine {
     }
 
     const unlocks = this.storage.getBoosterUnlockState();
-    if (type === 'rainbow' && !unlocks.rainbowUnlocked && this.levelDescriptor.forceBall !== 'rainbow') {
+    const isCustom = !!(this.levelDescriptor && this.levelDescriptor.modeTag === 'custom');
+    if (type === 'rainbow' && !unlocks.rainbowUnlocked && !isCustom && this.levelDescriptor.forceBall !== 'rainbow') {
       return false;
     }
-    if (type === 'bomb' && !unlocks.bombUnlocked && this.levelDescriptor.forceBall !== 'bomb') {
+    if (type === 'bomb' && !unlocks.bombUnlocked && !isCustom && this.levelDescriptor.forceBall !== 'bomb') {
       return false;
     }
-    if (type === 'propeller' && !unlocks.propellerUnlocked && this.levelDescriptor.forceBall !== 'propeller') {
+    if (type === 'propeller' && !unlocks.propellerUnlocked && !isCustom && this.levelDescriptor.forceBall !== 'propeller') {
       return false;
     }
 
@@ -11050,6 +12098,20 @@ class PearlGemEngine {
     }
 
     if (this.mode !== 'playing' || this.inGameSettingsOpen) return;
+
+    // 3D Level Editor interactive viewport modes: 'inspect' (free 3D orbit drag) | 'paint' (3D raycast pearl brush)
+    if (this.editorMode === 'inspect' && this.sphere) {
+      this._editorDragging = true;
+      this._editorLastPt = { x, y };
+      return;
+    }
+    if (this.editorMode === 'paint' && this.sphere) {
+      this._editorPainting = true;
+      this._editorLastPaintedId = -1;
+      this._applyEditorBrushAtScreen(x, y);
+      return;
+    }
+
     if (this.shotsLeft <= 0 && !this.activeBooster) return;
 
     if (this._isTouchNearSwitcher(x, y)) {
@@ -11069,6 +12131,25 @@ class PearlGemEngine {
     this._aimDirty = false;
     this._smoothAimPt = { x, y: this._liftFingerY(y) };
     this._computeBallisticAim(this._smoothAimPt.x, this._smoothAimPt.y);
+  }
+
+  _applyEditorBrushAtScreen(x, y) {
+    if (!this.sphere || !this.camera) return;
+    const ray = this.camera.screenToRay(x, y);
+    const hitPearl = this.sphere.raycastVisiblePearl(ray.origin, ray.dir);
+    if (!hitPearl || hitPearl.id === this._editorLastPaintedId) return;
+    this._editorLastPaintedId = hitPearl.id;
+    const paintedCount = this.sphere.paintPearl(hitPearl, this.editorBrush || { tool: 'color', colorIdx: 0, scope: 'single' });
+    if (paintedCount > 0) {
+      this._spawnPopSparkles(hitPearl.worldPos, hitPearl.color ? hitPearl.color.rgb : [1, 1, 1], 4);
+      this.audio.playSfx('click');
+      if (typeof this.onEditorPainted === 'function') {
+        this.onEditorPainted(hitPearl, paintedCount);
+      }
+      if (typeof this.onEditorPaint === 'function') {
+        this.onEditorPaint(paintedCount);
+      }
+    }
   }
 
   onPointerMove(x, y) {
@@ -11091,6 +12172,19 @@ class PearlGemEngine {
     }
 
     if (this.mode !== 'playing') return;
+
+    if (this._editorDragging && this.editorMode === 'inspect' && this.sphere) {
+      const dx = x - (this._editorLastPt ? this._editorLastPt.x : x);
+      const dy = y - (this._editorLastPt ? this._editorLastPt.y : y);
+      this._editorLastPt = { x, y };
+      if (Math.abs(dx) > 0.2) this.sphere.rotateBy({ x: 0, y: 1, z: 0 }, dx * 0.011);
+      if (Math.abs(dy) > 0.2) this.sphere.rotateBy({ x: 1, y: 0, z: 0 }, dy * 0.011);
+      return;
+    }
+    if (this._editorPainting && this.editorMode === 'paint' && this.sphere) {
+      this._applyEditorBrushAtScreen(x, y);
+      return;
+    }
 
     if (this._downNearSwitcher) {
       const dist = Math.hypot(x - this._downPt.x, y - this._downPt.y);
@@ -11125,6 +12219,12 @@ class PearlGemEngine {
   }
 
   onPointerUp(x, y) {
+    if (this._editorDragging || this._editorPainting) {
+      this._editorDragging = false;
+      this._editorPainting = false;
+      this._editorLastPaintedId = -1;
+      return;
+    }
     if (this._safeDragging) {
       this._safeDragging = false;
       if (this.mode === 'safe_outro' && this.safeOutroState && !this.safeOutroState.cracked) {
@@ -12489,10 +13589,11 @@ class PearlGemEngine {
       this._emitUIState();
       return;
     }
-    this.starStreak = Math.min(STAR_MAX_HITS, this.starStreak + 1);
-    this.starMeterPct = Math.round((this.starStreak / STAR_MAX_HITS) * 100);
+    const maxStarHits = Math.max(1, (this.levelDescriptor && this.levelDescriptor.starMaxHits) || STAR_MAX_HITS);
+    this.starStreak = Math.min(maxStarHits, this.starStreak + 1);
+    this.starMeterPct = Math.round((this.starStreak / maxStarHits) * 100);
 
-    if (!this.streakRewardClaimed && this.streakRewardType && this.starStreak >= 3) {
+    if (!this.streakRewardClaimed && this.streakRewardType && this.starStreak >= Math.min(3, maxStarHits)) {
       this.streakRewardClaimed = true;
       if (this.streakRewardType === 'coin') {
         this.coinsThisRun += 20;
@@ -12521,7 +13622,7 @@ class PearlGemEngine {
       this._completeTutorial('streak_item');
     }
 
-    if (this.starStreak >= STAR_MAX_HITS && !this.sphere.starActivated) {
+    if (this.starStreak >= maxStarHits && !this.sphere.starActivated) {
       this._activateCoreStar();
       return;
     }
@@ -12550,9 +13651,10 @@ class PearlGemEngine {
 
   _activateCoreStar() {
     if (!this.sphere || this.sphere.starActivated || this.sphere.starHit) return;
+    const maxStarHits = Math.max(1, (this.levelDescriptor && this.levelDescriptor.starMaxHits) || STAR_MAX_HITS);
     this.sphere.starActivated = true;
     this.sphere.starSpawnScale = 0.22;
-    this.starStreak = STAR_MAX_HITS;
+    this.starStreak = maxStarHits;
     this.starMeterPct = 100;
     this.starAlertBanner = true;
     this._starAlertTimer = 2.6;
@@ -13804,10 +14906,10 @@ class PearlGemEngine {
       rainbowBalls: save.rainbowBalls,
       bombBalls: save.bombBalls,
       propellerBalls: save.propellerBalls,
-      rainbowUnlocked: save.rainbowUnlocked || desc.forceBall === 'rainbow',
-      bombUnlocked: save.bombUnlocked || desc.forceBall === 'bomb',
-      propellerUnlocked: save.propellerUnlocked || desc.forceBall === 'propeller',
-      doubleSwitchUnlocked: (save.doubleSwitchUnlocked || false) && !desc.noDouble,
+      rainbowUnlocked: save.rainbowUnlocked || desc.forceBall === 'rainbow' || desc.modeTag === 'custom',
+      bombUnlocked: save.bombUnlocked || desc.forceBall === 'bomb' || desc.modeTag === 'custom',
+      propellerUnlocked: save.propellerUnlocked || desc.forceBall === 'propeller' || desc.modeTag === 'custom',
+      doubleSwitchUnlocked: (save.doubleSwitchUnlocked || desc.modeTag === 'custom') && !desc.noDouble,
       doubleSwitchFree: doubleCost === 0,
       doubleSwitchCost: doubleCost,
       doubleSwitchCanAfford: doubleCost === 0 || save.coins >= doubleCost,
@@ -13831,7 +14933,7 @@ class PearlGemEngine {
       shotsLeft: this.shotsLeft,
       activeBooster: this.activeBooster,
       starStreak: this.starStreak || 0,
-      starMaxHits: STAR_MAX_HITS,
+      starMaxHits: desc.starMaxHits || STAR_MAX_HITS,
       starMeterPct: this.starMeterPct,
       starActivated: !!(this.sphere && this.sphere.starActivated),
       starAlertBanner: this.starAlertBanner,
@@ -13907,6 +15009,13 @@ module.exports = { PearlGemEngine };
 
 });
 
+      const {
+        WORLDS,
+        LEVEL_CONFIGS,
+        SNAKE_CONFIGS,
+        resolveLevelDescriptor,
+        buildCustomLevelDescriptor
+      } = __require('./levels');
       const { StorageService } = __require('./storage');
       const { AudioService } = __require('./audio');
       const { PearlGemEngine } = __require('./game_engine');
@@ -14000,6 +15109,7 @@ module.exports = { PearlGemEngine };
             <div class="wx-sheet-mask" data-wx-act="cancel">
               <div class="wx-sheet-panel">
                 <div class="wx-sheet-header">珍珠宝石 · 小程序菜单</div>
+                <button type="button" class="wx-sheet-item" data-wx-act="open_editor">🛠️ 打开 3D 可视化关卡编辑器</button>
                 <button type="button" class="wx-sheet-item" data-wx-act="go_home">返回星球主页</button>
                 ${inLevel ? `<button type="button" class="wx-sheet-item" data-wx-act="retry">重新开始当前关卡</button>` : `<button type="button" class="wx-sheet-item" data-wx-act="go_gems">打开珍珠宝石熔炉</button>`}
                 <button type="button" class="wx-sheet-item" data-wx-act="toggle_audio">音效与音乐：${ui.soundOn ? '当前已开启' : '当前已静音'}</button>
@@ -14608,6 +15718,10 @@ module.exports = { PearlGemEngine };
                       <div class="pg-stage-grid">${stageChips}</div>
                     </div>
                     <div class="pg-settings-footer">
+                      <div class="pg-promo-btn" data-action="openLevelEditor">
+                        <img class="pg-btn-bg img-fill" src="${sp('btn_ok_next.png')}" alt="" />
+                        <span class="pg-promo-btn-txt">🛠️ 关卡编辑器</span>
+                      </div>
                       <div class="pg-promo-btn" data-action="togglePromo">
                         <img class="pg-btn-bg img-fill" src="${sp('btn_create_gem.png')}" alt="" />
                         <span class="pg-promo-btn-txt pg-dark-txt">礼包码兑换</span>
@@ -15572,7 +16686,9 @@ module.exports = { PearlGemEngine };
         if (!actEl) return;
         const act = actEl.getAttribute('data-wx-act');
         closeWxSheet();
-        if (act === 'go_home') {
+        if (act === 'open_editor') {
+          if (typeof openLevelEditor === 'function') openLevelEditor();
+        } else if (act === 'go_home') {
           engine.enterMenu('home');
         } else if (act === 'go_gems') {
           engine.switchMenuTab('gems');
@@ -15851,6 +16967,9 @@ module.exports = { PearlGemEngine };
           case 'debugAction':
             engine.runDebugAction(el.getAttribute('data-act'));
             break;
+          case 'openLevelEditor':
+            if (typeof openLevelEditor === 'function') openLevelEditor();
+            break;
         }
       });
 
@@ -15868,6 +16987,1288 @@ module.exports = { PearlGemEngine };
       document.getElementById('sideWxSimBtn')?.addEventListener('click', () => applyWeChatSafeMode(!wxSafeMode));
       document.getElementById('sideHomeBtn')?.addEventListener('click', () => engine.enterMenu('home'));
       document.getElementById('sideGemsBtn')?.addEventListener('click', () => engine.switchMenuTab('gems'));
+
+      // =========================================================================
+      // 3D VISUAL LEVEL EDITOR (珍珠宝石 3D 可视化关卡编辑器)
+      // =========================================================================
+      const editorDock = document.getElementById('levelEditorDock');
+      const editorVpHud = document.getElementById('editorViewportHud');
+      const CUSTOM_PACK_STORAGE_KEY = 'pg_custom_levels_v1';
+
+      const PATTERN_META = [
+        { id: 0, name: '沃罗诺伊色块', desc: '经典有机大色区' },
+        { id: 1, name: '黄金螺旋色带', desc: '斐波那契螺旋纹' },
+        { id: 2, name: '横向纬线环带', desc: '赤道与极圈分层' },
+        { id: 3, name: '经线瓜瓣分区', desc: '纵向经度切分' },
+        { id: 4, name: '棋盘格交错', desc: '高难度经纬网格' },
+        { id: 5, name: '极地花瓣辐射', desc: '对称花瓣簇排布' },
+        { id: 6, name: '双螺旋交织', desc: '双向扭转螺旋带' },
+        { id: 7, name: '钻石菱格网', desc: '斜向几何晶格' },
+        { id: 8, name: '三叶草涡旋', desc: '三旋臂星云结构' },
+        { id: 9, name: '蜂巢六角簇', desc: '六边形紧密团簇' },
+        { id: 10, name: '混沌星云斑', desc: '随机星云噪点团' }
+      ];
+
+      const PALETTE_PRESETS = [
+        { name: '官方珊瑚海', hexes: ['#FF2E55', '#12D6FF', '#FFCC00', '#2CE65C', '#B833FF', '#FF7A00', '#FFF6FB'] },
+        { name: '极光冰川', hexes: ['#00F5D4', '#00BBF9', '#9B5DE5', '#F15BB5', '#FEE440', '#4CC9F0', '#FFFFFF'] },
+        { name: '熔岩火山', hexes: ['#FF1654', '#FF5964', '#FF9F1C', '#FFE74C', '#9B2915', '#E71D36', '#FFF8F0'] },
+        { name: '翡翠森林', hexes: ['#2EC4B6', '#52B788', '#FFD166', '#EF476F', '#118AB2', '#A7C957', '#F8FFE5'] },
+        { name: '皇家紫金', hexes: ['#7209B7', '#F72585', '#4CC9F0', '#FFB703', '#4361EE', '#FB8500', '#FAF0CA'] }
+      ];
+
+      const DECOR_OPTIONS = [
+        { val: '', label: '无四角装饰' },
+        { val: 'decor_leaves.png', label: '翡翠阔叶 (leaves)' },
+        { val: 'decor_palm.png', label: '热带棕榈 (palm)' },
+        { val: 'decor_succulents.png', label: '星光多肉 (succulents)' },
+        { val: 'decor_blue_flowers.png', label: '深海蓝花 (blue_flowers)' },
+        { val: 'decor_autumn.png', label: '金秋枫叶 (autumn)' },
+        { val: 'decor_sunflower.png', label: '璀璨向日葵 (sunflower)' },
+        { val: 'decor_roses.png', label: '皇家玫瑰 (roses)' },
+        { val: 'decor_cherry.png', label: '绯红樱花 (cherry)' }
+      ];
+
+      const BG_PATTERN_OPTIONS = [
+        { val: 'pat_checker.png', label: '经典棋盘格 (checker)' },
+        { val: 'pat_clover.png', label: '四叶草星纹 (clover)' },
+        { val: 'pat_star.png', label: '璀璨星芒 (star)' },
+        { val: 'pat_triangle.png', label: '几何三角纹 (triangle)' },
+        { val: 'pat_mushroom.png', label: '奇幻蘑菇纹 (mushroom)' },
+        { val: 'pat_circle.png', label: '同心圆环纹 (circle)' },
+        { val: 'pat_warson.png', label: '瓦森暗能纹 (warson)' }
+      ];
+
+      function rgbArrToHex(arr) {
+        if (typeof arr === 'string' && arr.startsWith('#')) return arr.toUpperCase();
+        if (!Array.isArray(arr) || arr.length < 3) return '#FF2E55';
+        const to2 = (v) => Math.max(0, Math.min(255, Math.round(Number(v || 0) * 255))).toString(16).padStart(2, '0');
+        return ('#' + to2(arr[0]) + to2(arr[1]) + to2(arr[2])).toUpperCase();
+      }
+
+      function getWorldPaletteHexes(w) {
+        const defaultHexes = ['#FF2E55', '#12D6FF', '#FFCC00', '#2CE65C', '#B833FF', '#FF7A00', '#FFF6FB'];
+        if (!w || !Array.isArray(w.palettes) || !Array.isArray(w.palettes[0])) return defaultHexes;
+        const fromW = w.palettes[0].map(rgbArrToHex);
+        while (fromW.length < 7) {
+          fromW.push(defaultHexes[fromW.length % defaultHexes.length]);
+        }
+        return fromW.slice(0, 7);
+      }
+
+      function createDefaultEditorSpec() {
+        const w0 = WORLDS[0] || {};
+        return {
+          level: 1,
+          title: '自定义关卡 1',
+          worldIndex: 0,
+          levelType: 0,
+          patternType: 0,
+          rotationPattern: 'steady',
+          parallax: false,
+          layersCount: 3,
+          startRadius: 6,
+          colorsCount: 5,
+          minSeeds: 10,
+          maxSeeds: 14,
+          seed: 1082,
+          autoShots: true,
+          shots: 28,
+          rotSpeeds: [0.35, -0.28, 0.22, -0.18, 0.15],
+          paletteHexes: getWorldPaletteHexes(w0),
+          bgTop: rgbArrToHex(w0.bgTop || '#0F4C9C'),
+          bgBot: rgbArrToHex(w0.bgBot || '#1F7DE0'),
+          patternSprite: w0.pat || 'pat_checker.png',
+          decorSprite: w0.decor || 'decor_leaves.png',
+          glassShields: 0,
+          metalShields: 0,
+          shieldRotSpeedDeg: 28,
+          shieldExtraBalls: 4,
+          satellites: 0,
+          satelliteKind: 'coin',
+          rockChance: 0,
+          propellerChance: 0,
+          hasColorBomb: false,
+          bonusCoinsCount: 0,
+          warsonHp: 12,
+          warsonShields: 6,
+          warsonCooldown: 1.1,
+          snakeSegments: 28,
+          snakeSpeed: 2.5,
+          forceBall: '',
+          fixedShooterQueue: [],
+          initialBoosters: { rainbow: 2, bomb: 2, propeller: 2 },
+          starMaxHits: 5,
+          streakRewardType: 'rainbow',
+          noStar: false,
+          noSwitch: false,
+          noDouble: false,
+          noSpecial: false,
+          pearlOverrides: {}
+        };
+      }
+
+      const editorState = {
+        open: false,
+        activeTab: 'style', // 'style' | 'obstacles' | 'balls' | 'pack'
+        interactionMode: 'inspect', // 'inspect' | 'paint' | 'play'
+        freezeRotation: false,
+        isolateLayer: -1, // -1 = all layers, 0..4 = specific layer, or peel outer
+        peelOuterLayers: 0, // 0..4 outer layers hidden
+        brush: {
+          mode: 'color', // 'color' | 'rock' | 'colorbomb' | 'propeller' | 'coin' | 'normal' | 'erase'
+          colorIndex: 0,
+          scope: 'single' // 'single' | 'neighbor' | 'zone'
+        },
+        templateLevelNum: 1,
+        templateCfgKey: '',
+        exportFormat: 'json', // 'json' | 'code'
+        exportText: '',
+        spec: createDefaultEditorSpec()
+      };
+
+      function loadSavedCustomPack() {
+        try {
+          const raw = localStorage.getItem(CUSTOM_PACK_STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      }
+
+      function saveCustomPackList(list) {
+        try {
+          localStorage.setItem(CUSTOM_PACK_STORAGE_KEY, JSON.stringify(list));
+        } catch (_) {}
+      }
+
+      function syncEditorBrushToEngine() {
+        engine.editorBrush = {
+          mode: editorState.brush.mode,
+          colorIndex: editorState.brush.colorIndex,
+          scope: editorState.brush.scope
+        };
+        engine.onEditorPaint = (paintedCount) => {
+          if (engine.sphere && engine.sphere.pearlOverrides) {
+            editorState.spec.pearlOverrides = { ...engine.sphere.pearlOverrides };
+          }
+          renderEditorViewportHud();
+          renderEditorDiagnosticsStrip();
+        };
+      }
+
+      function applyLayerVisibilityToSphere() {
+        if (!engine.sphere) return;
+        const maxL = Math.max(0, (editorState.spec.layersCount || 1) - 1);
+        if (editorState.isolateLayer >= 0) {
+          const target = Math.min(maxL, editorState.isolateLayer);
+          engine.sphere.editorMinLayer = target;
+          engine.sphere.editorMaxLayer = target;
+        } else if (editorState.peelOuterLayers > 0) {
+          const minL = Math.min(maxL, editorState.peelOuterLayers);
+          engine.sphere.editorMinLayer = minL;
+          engine.sphere.editorMaxLayer = 99;
+        } else {
+          engine.sphere.editorMinLayer = 0;
+          engine.sphere.editorMaxLayer = 99;
+        }
+        engine.sphere.editorFreezeRotation = !!editorState.freezeRotation;
+      }
+
+      function applyEditorSpecToEngine(preserveOverrides = true) {
+        if (preserveOverrides && engine.sphere && engine.sphere.pearlOverrides && Object.keys(engine.sphere.pearlOverrides).length > 0) {
+          editorState.spec.pearlOverrides = { ...engine.sphere.pearlOverrides };
+        }
+        const desc = buildCustomLevelDescriptor(editorState.spec);
+        if (editorState.spec.autoShots) {
+          editorState.spec.shots = desc.shots;
+        }
+        syncEditorBrushToEngine();
+        const mode = editorState.open ? editorState.interactionMode : 'play';
+        engine.startCustomLevel(editorState.spec, {
+          editorMode: mode === 'play' ? null : mode,
+          freezeRotation: editorState.freezeRotation
+        });
+        applyLayerVisibilityToSphere();
+        if (editorState.open) {
+          renderEditorViewportHud();
+          renderEditorDock();
+        }
+      }
+
+      function setEditorInteractionMode(mode) {
+        editorState.interactionMode = mode;
+        if (!engine.sphere || engine.mode !== 'playing') {
+          applyEditorSpecToEngine(true);
+          return;
+        }
+        if (mode === 'play') {
+          engine.editorMode = null;
+          editorState.isolateLayer = -1;
+          editorState.peelOuterLayers = 0;
+          editorState.freezeRotation = false;
+          applyLayerVisibilityToSphere();
+          showToast('▶️ 已进入实机试玩模式：可瞄准发射、切换球、使用道具！');
+        } else {
+          engine.editorMode = mode;
+          syncEditorBrushToEngine();
+          applyLayerVisibilityToSphere();
+          if (mode === 'paint') {
+            showToast('🖌️ 3D 画笔已启用：直接在左侧 3D 珍珠球面上点击或涂抹！');
+          } else {
+            showToast('🖐️ 旋转观察模式：按住球面任意拖拽可 360° 检视球层！');
+          }
+        }
+        renderEditorViewportHud();
+        renderEditorDock();
+      }
+
+      function importOfficialLevelIntoEditor(levelNum, cfgKeyOverride) {
+        const desc = resolveLevelDescriptor(levelNum || 1, cfgKeyOverride || null);
+        const wIdx = Math.max(0, Math.min(WORLDS.length - 1, (desc.worldIndex || 1) - 1));
+        const w = WORLDS[wIdx] || WORLDS[0];
+        const layersCount = Array.isArray(desc.layers) ? desc.layers.length : 3;
+        const startRadius = desc.startRadius || (layersCount > 0 ? desc.layers[0].radius : 6);
+        const colorsCount = Array.isArray(desc.colors) ? desc.colors.length : 5;
+        const minSeeds = layersCount > 0 && desc.layers[0].seeds ? desc.layers[0].seeds : 10;
+        const maxSeeds = minSeeds + 4;
+        const rotSpeeds = [0, 1, 2, 3, 4].map((i) => (desc.layers[i] ? Number((desc.layers[i].rotSpeedRad || 0.25).toFixed(2)) : (i % 2 === 0 ? 0.25 : -0.22)));
+        const descHexes = Array.isArray(desc.colors) ? desc.colors.map((c) => (c.hex || '#FF2E55').toUpperCase()) : [];
+        const fallbackHexes = getWorldPaletteHexes(w);
+        while (descHexes.length < 7) descHexes.push(fallbackHexes[descHexes.length % fallbackHexes.length]);
+
+        editorState.spec = {
+          level: desc.globalLevel || levelNum || 1,
+          title: `改编 · ${desc.displayTitleZh || ('第 ' + (desc.globalLevel || 1) + ' 关')}`,
+          worldIndex: wIdx,
+          levelType: desc.levelType || 0,
+          patternType: desc.patternType || 0,
+          rotationPattern: desc.rotPattern || 'steady',
+          parallax: !!desc.parallax,
+          layersCount,
+          startRadius,
+          colorsCount,
+          minSeeds,
+          maxSeeds,
+          seed: desc.seed || ((desc.globalLevel || 1) * 1337),
+          autoShots: false,
+          shots: desc.shots || 28,
+          rotSpeeds,
+          paletteHexes: descHexes.slice(0, 7),
+          bgTop: rgbArrToHex(desc.bgTop || w.bgTop),
+          bgBot: rgbArrToHex(desc.bgBot || w.bgBot),
+          patternSprite: desc.patSprite || w.pat || 'pat_checker.png',
+          decorSprite: desc.decorSprite !== undefined ? desc.decorSprite : (w.decor || ''),
+          glassShields: desc.glassShields || 0,
+          metalShields: desc.metalShields || 0,
+          shieldRotSpeedDeg: 28,
+          shieldExtraBalls: desc.shieldExtraBalls || 0,
+          satellites: desc.satellites || 0,
+          satelliteKind: desc.satelliteType || 'coin',
+          rockChance: Math.round((desc.rockChance || 0) * 100),
+          propellerChance: Math.round((desc.propellerChance || 0) * 100),
+          hasColorBomb: !!desc.hasColorBomb,
+          bonusCoinsCount: desc.bonusCoinsCount || 0,
+          warsonHp: desc.warsonBoss ? (desc.warsonBoss.maxHp || 4) : 12,
+          warsonShields: 6,
+          warsonCooldown: desc.warsonBoss ? (desc.warsonBoss.damageCooldown || 0.45) : 1.1,
+          snakeSegments: desc.snakeConfig ? (desc.snakeConfig.segments || 44) : 28,
+          snakeSpeed: desc.snakeConfig ? Number(((desc.snakeConfig.speed || 0.038) / 0.015).toFixed(2)) : 2.5,
+          forceBall: desc.forceBall || '',
+          fixedShooterQueue: [],
+          initialBoosters: { rainbow: 2, bomb: 2, propeller: 2 },
+          starMaxHits: 5,
+          streakRewardType: 'rainbow',
+          noStar: !!desc.noStar,
+          noSwitch: !!desc.noSwitch,
+          noDouble: !!desc.noDouble,
+          noSpecial: !!desc.noSpecial,
+          pearlOverrides: {}
+        };
+        editorState.isolateLayer = -1;
+        editorState.peelOuterLayers = 0;
+        applyEditorSpecToEngine(false);
+        showToast(`已载入官方模板：${desc.displayTitleZh}`);
+      }
+
+      function formatExportPayload() {
+        const cleanSpec = { ...editorState.spec };
+        if (editorState.exportFormat === 'code') {
+          const keyName = `Custom_Level_${cleanSpec.level || 1}_${Date.now().toString(36).slice(-4)}`;
+          const layersArr = [];
+          for (let i = 0; i < cleanSpec.layersCount; i++) {
+            layersArr.push([
+              Math.max(2, cleanSpec.startRadius - i),
+              cleanSpec.colorsCount,
+              Math.max(4, cleanSpec.minSeeds - i * 2),
+              Math.max(6, cleanSpec.maxSeeds - i * 2),
+              Number((cleanSpec.rotSpeeds[i] ?? 0.25).toFixed(2))
+            ]);
+          }
+          const entry = {
+            t: cleanSpec.levelType,
+            p: cleanSpec.patternType,
+            s: cleanSpec.shots,
+            rot: cleanSpec.rotationPattern,
+            prx: cleanSpec.parallax ? 1 : 0,
+            sh: (cleanSpec.glassShields > 0 || cleanSpec.metalShields > 0)
+              ? [cleanSpec.glassShields, cleanSpec.metalShields, cleanSpec.shieldExtraBalls]
+              : null,
+            sat: cleanSpec.satellites > 0 ? [cleanSpec.satellites, cleanSpec.satelliteKind] : null,
+            ns: cleanSpec.noStar ? 1 : 0,
+            nsw: cleanSpec.noSwitch ? 1 : 0,
+            nd: cleanSpec.noDouble ? 1 : 0,
+            nsp: cleanSpec.noSpecial ? 1 : 0,
+            fb: cleanSpec.forceBall || '',
+            l: layersArr
+          };
+          return `// 可直接粘贴至 miniprogram/engine/levels.js 的 LEVEL_CONFIGS 中：\n"${keyName}": ${JSON.stringify(entry, null, 2)},\n\n// 完整自定义扩展描述（含配色/障碍比例/手绘覆盖/固定发球队列）：\n/*\n${JSON.stringify(cleanSpec, null, 2)}\n*/`;
+        }
+        return JSON.stringify(cleanSpec, null, 2);
+      }
+
+      function openLevelEditor() {
+        editorState.open = true;
+        document.body.classList.add('editor-open');
+        if (editorState.interactionMode === 'play') {
+          editorState.interactionMode = 'inspect';
+        }
+        applyWeChatSafeMode(false);
+        applyEditorSpecToEngine(true);
+      }
+
+      function closeLevelEditor() {
+        editorState.open = false;
+        document.body.classList.remove('editor-open');
+        engine.editorMode = null;
+        if (engine.sphere) {
+          engine.sphere.editorFreezeRotation = false;
+          engine.sphere.editorMinLayer = 0;
+          engine.sphere.editorMaxLayer = 99;
+        }
+        applyWeChatSafeMode(true);
+      }
+
+      function renderEditorViewportHud() {
+        if (!editorVpHud) return;
+        if (!editorState.open) {
+          editorVpHud.innerHTML = '';
+          return;
+        }
+        const s = editorState.spec;
+        const m = editorState.interactionMode;
+        const layerChips = [];
+        layerChips.push(`
+          <button type="button" class="ed-vp-pill ${editorState.isolateLayer === -1 && editorState.peelOuterLayers === 0 ? 'active' : ''}" data-ed-vp="layer_all">
+            全层(${s.layersCount})
+          </button>
+        `);
+        for (let li = 0; li < s.layersCount; li++) {
+          const isIso = editorState.isolateLayer === li;
+          layerChips.push(`
+            <button type="button" class="ed-vp-pill ${isIso ? 'active' : ''}" data-ed-vp="layer_iso" data-layer="${li}">
+              只看L${li + 1}${li === 0 ? '(外)' : li === s.layersCount - 1 ? '(内)' : ''}
+            </button>
+          `);
+        }
+        if (s.layersCount > 1) {
+          const nextPeel = (editorState.peelOuterLayers + 1) % s.layersCount;
+          layerChips.push(`
+            <button type="button" class="ed-vp-pill ${editorState.peelOuterLayers > 0 ? 'warn' : ''}" data-ed-vp="layer_peel" data-peel="${nextPeel}">
+              🧅 剥壳:${editorState.peelOuterLayers > 0 ? '已剥' + editorState.peelOuterLayers + '层' : '关'}
+            </button>
+          `);
+        }
+
+        let brushDockHtml = '';
+        if (m === 'paint') {
+          const b = editorState.brush;
+          const colorSwatches = s.paletteHexes.slice(0, s.colorsCount).map((hex, idx) => `
+            <div class="ed-swatch ${b.mode === 'color' && b.colorIndex === idx ? 'active' : ''}"
+                 style="background:${esc(hex)};"
+                 title="涂抹颜色 ${idx + 1}"
+                 data-ed-vp="brush_color" data-cidx="${idx}">
+              ${idx + 1}
+            </div>
+          `).join('');
+
+          const toolItems = [
+            { mode: 'rock', icon: '🪨', label: '岩石' },
+            { mode: 'colorbomb', icon: '⚡', label: '闪电' },
+            { mode: 'propeller', icon: '🚁', label: '飞弹' },
+            { mode: 'coin', icon: '🪙', label: '金币' },
+            { mode: 'normal', icon: '✨', label: '清特殊' },
+            { mode: 'erase', icon: '🧹', label: '擦除' }
+          ].map((t) => `
+            <div class="ed-swatch ${b.mode === t.mode ? 'active' : ''}"
+                 style="background:rgba(30,45,78,0.92);font-size:12px;width:auto;padding:0 7px;border-radius:10px;"
+                 data-ed-vp="brush_mode" data-bmode="${t.mode}">
+              ${t.icon}${t.label}
+            </div>
+          `).join('');
+
+          const overrideCount = Object.keys(s.pearlOverrides || {}).length;
+          brushDockHtml = `
+            <div class="ed-vp-brush-dock">
+              <div class="ed-vp-brush-row" style="justify-content:space-between;">
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <span class="ed-vp-tag">笔刷范围</span>
+                  <button type="button" class="ed-vp-pill ${b.scope === 'single' ? 'active' : ''}" data-ed-vp="brush_scope" data-scope="single">单颗点涂</button>
+                  <button type="button" class="ed-vp-pill ${b.scope === 'neighbor' ? 'active' : ''}" data-ed-vp="brush_scope" data-scope="neighbor">邻域簇涂</button>
+                  <button type="button" class="ed-vp-pill ${b.scope === 'zone' ? 'active' : ''}" data-ed-vp="brush_scope" data-scope="zone">同色油漆桶</button>
+                </div>
+                ${overrideCount > 0 ? `<button type="button" class="ed-vp-pill warn" data-ed-vp="clear_overrides">清空手绘(${overrideCount})</button>` : `<span class="ed-vp-tag">点击球面涂抹</span>`}
+              </div>
+              <div class="ed-vp-brush-row">
+                ${colorSwatches}
+                ${toolItems}
+              </div>
+            </div>
+          `;
+        }
+
+        editorVpHud.innerHTML = `
+          <div class="ed-vp-top">
+            <div class="ed-vp-bar">
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <button type="button" class="ed-vp-pill ${m === 'inspect' ? 'active' : ''}" data-ed-vp="mode" data-mode="inspect">🖐️ 旋转观察</button>
+                <button type="button" class="ed-vp-pill ${m === 'paint' ? 'active' : ''}" data-ed-vp="mode" data-mode="paint">🖌️ 3D 画笔</button>
+                <button type="button" class="ed-vp-pill ${m === 'play' ? 'play-active' : ''}" data-ed-vp="mode" data-mode="play">▶️ 实机试玩</button>
+              </div>
+              <div style="display:flex;gap:4px;">
+                <button type="button" class="ed-vp-pill ${editorState.freezeRotation ? 'warn' : ''}" data-ed-vp="toggle_freeze">
+                  ${editorState.freezeRotation ? '❄️ 已锁自转' : '🔄 自转中'}
+                </button>
+                <button type="button" class="ed-vp-pill" data-ed-vp="rebuild">🔁 重置球</button>
+              </div>
+            </div>
+            <div class="ed-vp-bar" style="padding:4px 8px;">
+              <span class="ed-vp-tag">剖层透视</span>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1;justify-content:flex-end;">
+                ${layerChips.join('')}
+              </div>
+            </div>
+          </div>
+          ${brushDockHtml}
+        `;
+      }
+
+      function computeDiagnosticsSummary() {
+        const diag = (engine.sphere && typeof engine.sphere.computeLevelDiagnostics === 'function')
+          ? engine.sphere.computeLevelDiagnostics()
+          : { totalPearls: 0, perLayerCounts: [], colorZonesCount: 0, rockCount: 0, colorBombCount: 0, propellerCount: 0, bonusCoinCount: 0, glassShields: 0, metalShields: 0, satellitesCount: 0, estimatedMinShots: 10, difficultyStars: 2 };
+        const shots = Number(editorState.spec.shots || 25);
+        const ratio = shots / Math.max(1, diag.estimatedMinShots);
+        let statusLabel = '✅ 步数充裕';
+        let statusColor = '#5ce68b';
+        if (ratio < 1.05) {
+          statusLabel = '⚠️ 步数极紧 (高难挑战)';
+          statusColor = '#ff7b7b';
+        } else if (ratio < 1.35) {
+          statusLabel = '⚖️ 步数紧凑 (精英难度)';
+          statusColor = '#ffd15c';
+        }
+        const starsStr = '★'.repeat(diag.difficultyStars) + '☆'.repeat(Math.max(0, 5 - diag.difficultyStars));
+        return { diag, shots, statusLabel, statusColor, starsStr };
+      }
+
+      function renderEditorDiagnosticsStrip() {
+        const stripEl = document.getElementById('edDiagStrip');
+        if (!stripEl) return;
+        const { diag, shots, statusLabel, statusColor, starsStr } = computeDiagnosticsSummary();
+        const layerStr = (diag.perLayerCounts || []).map((c, i) => `L${i + 1}:${c}`).join(' / ') || '无';
+        stripEl.innerHTML = `
+          <div class="ed-diag-card">
+            <span class="ed-diag-val">${diag.totalPearls}</span>
+            <span class="ed-diag-lbl">珍珠总数 (${layerStr})</span>
+          </div>
+          <div class="ed-diag-card">
+            <span class="ed-diag-val">${diag.colorZonesCount}</span>
+            <span class="ed-diag-lbl">同色连通簇</span>
+          </div>
+          <div class="ed-diag-card">
+            <span class="ed-diag-val">${diag.estimatedMinShots} / ${shots}</span>
+            <span class="ed-diag-lbl" style="color:${statusColor};">${statusLabel}</span>
+          </div>
+          <div class="ed-diag-card">
+            <span class="ed-diag-val" style="color:#ffd452;">${starsStr}</span>
+            <span class="ed-diag-lbl">综合难度评级</span>
+          </div>
+        `;
+      }
+
+      function renderEditorDock() {
+        if (!editorDock || !editorState.open) return;
+        const s = editorState.spec;
+        const tab = editorState.activeTab;
+        const { diag, shots, statusLabel, statusColor, starsStr } = computeDiagnosticsSummary();
+        const layerStr = (diag.perLayerCounts || []).map((c, i) => `L${i + 1}:${c}`).join(' / ') || '无';
+
+        let bodyHtml = '';
+        if (tab === 'style') {
+          const worldOpts = WORLDS.map((w, idx) => `
+            <option value="${idx}" ${s.worldIndex === idx ? 'selected' : ''}>星球 ${idx + 1} · ${esc(w.name)}</option>
+          `).join('');
+
+          const patternCards = PATTERN_META.map((p) => `
+            <div class="ed-chip ${s.patternType === p.id ? 'active' : ''}" data-ed-act="set_pattern" data-val="${p.id}">
+              <div>#${p.id} ${esc(p.name)}</div>
+              <div style="font-size:12px;opacity:0.72;font-weight:500;">${esc(p.desc)}</div>
+            </div>
+          `).join('');
+
+          const speedSliders = [];
+          for (let i = 0; i < s.layersCount; i++) {
+            const spd = Number(s.rotSpeeds[i] ?? (i % 2 === 0 ? 0.3 : -0.25));
+            speedSliders.push(`
+              <div class="ed-row">
+                <span class="ed-label">第 ${i + 1} 层转速 (${spd >= 0 ? '顺时针' : '逆时针'} ${spd.toFixed(2)} rad/s)</span>
+                <input type="range" class="ed-range" min="-1.2" max="1.2" step="0.05" value="${spd}" data-ed-input="rot_speed" data-layer="${i}" style="width:150px;" />
+              </div>
+            `);
+          }
+
+          const presetChips = PALETTE_PRESETS.map((pr, idx) => `
+            <button type="button" class="ed-btn" data-ed-act="apply_palette_preset" data-idx="${idx}">${esc(pr.name)}</button>
+          `).join('');
+
+          const colorPickers = [];
+          for (let i = 0; i < s.colorsCount; i++) {
+            const hex = s.paletteHexes[i] || '#FF2E55';
+            colorPickers.push(`
+              <label style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:#c9dcff;cursor:pointer;">
+                <input type="color" value="${esc(hex)}" data-ed-input="palette_hex" data-cidx="${i}" style="width:36px;height:32px;border:none;background:none;cursor:pointer;" />
+                <span>球色${i + 1}</span>
+              </label>
+            `);
+          }
+
+          const patOpts = BG_PATTERN_OPTIONS.map((o) => `<option value="${o.val}" ${s.patternSprite === o.val ? 'selected' : ''}>${o.label}</option>`).join('');
+          const decorOpts = DECOR_OPTIONS.map((o) => `<option value="${o.val}" ${s.decorSprite === o.val ? 'selected' : ''}>${o.label}</option>`).join('');
+
+          bodyHtml = `
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🪐 关卡名称、星球预设与随机种子</span>
+                <button type="button" class="ed-btn warn" data-ed-act="random_seed">🎲 随机新种子 (${s.seed})</button>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">关卡标题 (中文)</span>
+                  <input type="text" class="ed-input" value="${esc(s.title)}" data-ed-change="title" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">所属星球视觉母版 (26个星球)</span>
+                  <select class="ed-select" data-ed-change="worldIndex">${worldOpts}</select>
+                </div>
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🌀 11 种官方球面色块排布算法 (PatternType)</span>
+              </div>
+              <div class="ed-chips">${patternCards}</div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🌐 3D 球层结构与色区簇密度</span>
+                <span class="ed-sec-badge">${s.layersCount} 层球壳 · 外径 ${s.startRadius}</span>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">球层数量: <b>${s.layersCount} 层</b> (1~5层)</span>
+                  <input type="range" class="ed-range" min="1" max="5" step="1" value="${s.layersCount}" data-ed-change="layersCount" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">最外层半径: <b>${s.startRadius}</b> (4~12，决定总球数)</span>
+                  <input type="range" class="ed-range" min="4" max="12" step="1" value="${s.startRadius}" data-ed-change="startRadius" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">最少色簇种子: <b>${s.minSeeds}</b></span>
+                  <input type="range" class="ed-range" min="4" max="24" step="1" value="${s.minSeeds}" data-ed-change="minSeeds" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">最多色簇种子: <b>${s.maxSeeds}</b></span>
+                  <input type="range" class="ed-range" min="6" max="32" step="1" value="${s.maxSeeds}" data-ed-change="maxSeeds" />
+                </div>
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🔄 球层旋转模式与各层独立转速</span>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">旋转轨迹模式</span>
+                  <select class="ed-select" data-ed-change="rotationPattern">
+                    <option value="steady" ${s.rotationPattern === 'steady' ? 'selected' : ''}>匀速环绕自转 (Steady)</option>
+                    <option value="yoyo" ${s.rotationPattern === 'yoyo' ? 'selected' : ''}>钟摆正反往复旋转 (Yo-Yo)</option>
+                  </select>
+                </div>
+                <div class="ed-field" style="justify-content:flex-end;">
+                  <label class="ed-row" style="cursor:pointer;">
+                    <span class="ed-label">层间正反视差交替 (Parallax)</span>
+                    <input type="checkbox" ${s.parallax ? 'checked' : ''} data-ed-change="parallax" style="width:18px;height:18px;" />
+                  </label>
+                </div>
+              </div>
+              ${speedSliders.join('')}
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🎨 本关珍珠颜色数量与调色盘 (${s.colorsCount} 色)</span>
+              </div>
+              <div class="ed-row">
+                <span class="ed-label">本关登场球色数: <b>${s.colorsCount} 种颜色</b> (2~7色)</span>
+                <input type="range" class="ed-range" min="2" max="7" step="1" value="${s.colorsCount}" data-ed-change="colorsCount" style="width:150px;" />
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">${presetChips}</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:4px;">${colorPickers.join('')}</div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🖼️ 背景渐变、底纹与四角装饰叶</span>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">天顶背景色 / 海底背景色</span>
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="color" value="${esc(s.bgTop)}" data-ed-input="bgTop" style="width:42px;height:30px;border:none;background:none;cursor:pointer;" />
+                    <input type="color" value="${esc(s.bgBot)}" data-ed-input="bgBot" style="width:42px;height:30px;border:none;background:none;cursor:pointer;" />
+                    <span style="font-size:12px;color:#9ab8ec;">实时同步背景</span>
+                  </div>
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">背景肌理底纹</span>
+                  <select class="ed-select" data-ed-change="patternSprite">${patOpts}</select>
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">四角前景装饰叶</span>
+                  <select class="ed-select" data-ed-change="decorSprite">${decorOpts}</select>
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (tab === 'obstacles') {
+          const modeCards = [
+            { id: 0, name: '⭐ 标准星核主线关', desc: '剥离外层击中中心星核过关' },
+            { id: 1, name: '🪙 珍珠金币奖励关', desc: '满球面金币与高额珍珠奖励' },
+            { id: 3, name: '👾 瓦森首领决战', desc: '击穿再生护盾击败瓦森首领' },
+            { id: 4, name: '🐍 贪吃蛇危机挑战', desc: '螺旋盘旋彩球链限时截击' }
+          ].map((m) => `
+            <div class="ed-chip ${s.levelType === m.id ? 'active' : ''}" data-ed-act="set_level_type" data-val="${m.id}">
+              <div>${esc(m.name)}</div>
+              <div style="font-size:12px;opacity:0.75;font-weight:500;">${esc(m.desc)}</div>
+            </div>
+          `).join('');
+
+          bodyHtml = `
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🎮 关卡核心玩法模式 (LevelMode)</span>
+              </div>
+              <div class="ed-grid-2">${modeCards}</div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🛡️ 六边形轨道旋转护盾 (Hexagonal Shields)</span>
+                <span class="ed-sec-badge">冰晶:${s.glassShields} · 合金:${s.metalShields}</span>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">❄️ 冰晶护盾数: <b>${s.glassShields} 面</b> (挡球1次碎裂)</span>
+                  <input type="range" class="ed-range" min="0" max="12" step="1" value="${s.glassShields}" data-ed-change="glassShields" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">🔩 合金护盾数: <b>${s.metalShields} 面</b> (需炸弹/闪电破除)</span>
+                  <input type="range" class="ed-range" min="0" max="10" step="1" value="${s.metalShields}" data-ed-change="metalShields" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">护盾公转速度: <b>${s.shieldRotSpeedDeg}°/秒</b></span>
+                  <input type="range" class="ed-range" min="0" max="90" step="2" value="${s.shieldRotSpeedDeg}" data-ed-change="shieldRotSpeedDeg" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">护盾额外补偿步数: <b>+${s.shieldExtraBalls} 球</b></span>
+                  <input type="range" class="ed-range" min="0" max="15" step="1" value="${s.shieldExtraBalls}" data-ed-change="shieldExtraBalls" />
+                </div>
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🛰️ 外轨环绕卫星 (Orbiting Satellites)</span>
+                <span class="ed-sec-badge">${s.satellites} 颗卫星</span>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">环绕卫星数量: <b>${s.satellites} 颗</b> (0~4颗)</span>
+                  <input type="range" class="ed-range" min="0" max="4" step="1" value="${s.satellites}" data-ed-change="satellites" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">卫星挂载类型</span>
+                  <select class="ed-select" data-ed-change="satelliteKind">
+                    <option value="coin" ${s.satelliteKind === 'coin' ? 'selected' : ''}>🪙 金币卫星 (击中爆金币)</option>
+                    <option value="star" ${s.satelliteKind === 'star' ? 'selected' : ''}>⭐ 星能卫星 (辅助充能)</option>
+                    <option value="mixed" ${s.satelliteKind === 'mixed' ? 'selected' : ''}>✨ 金币+星能混合卫星</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🪨 球面镶嵌障碍与机关球生成比例</span>
+                <button type="button" class="ed-btn primary" data-ed-act="switch_to_paint">🖌️ 用 3D 画笔精准手绘障碍</button>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">🪨 双阶岩石珍珠比例: <b>${s.rockChance}%</b></span>
+                  <input type="range" class="ed-range" min="0" max="45" step="1" value="${s.rockChance}" data-ed-change="rockChance" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">🚁 追踪飞弹印记比例: <b>${s.propellerChance}%</b></span>
+                  <input type="range" class="ed-range" min="0" max="40" step="1" value="${s.propellerChance}" data-ed-change="propellerChance" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">🪙 镶嵌金币珍珠数量: <b>${s.bonusCoinsCount} 颗</b></span>
+                  <input type="range" class="ed-range" min="0" max="30" step="1" value="${s.bonusCoinsCount}" data-ed-change="bonusCoinsCount" />
+                </div>
+                <div class="ed-field" style="justify-content:flex-end;">
+                  <label class="ed-row" style="cursor:pointer;">
+                    <span class="ed-label">⚡ 必出三阶闪电链核心球</span>
+                    <input type="checkbox" ${s.hasColorBomb ? 'checked' : ''} data-ed-change="hasColorBomb" style="width:18px;height:18px;" />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            ${s.levelType === 3 ? `
+              <div class="ed-sec">
+                <div class="ed-sec-head">
+                  <span class="ed-sec-title">👾 瓦森首领战专属配置 (Warson Boss)</span>
+                </div>
+                <div class="ed-grid-3">
+                  <div class="ed-field">
+                    <span class="ed-label">首领生命值: <b>${s.warsonHp} HP</b></span>
+                    <input type="range" class="ed-range" min="3" max="30" step="1" value="${s.warsonHp}" data-ed-change="warsonHp" />
+                  </div>
+                  <div class="ed-field">
+                    <span class="ed-label">首领护盾片: <b>${s.warsonShields} 片</b></span>
+                    <input type="range" class="ed-range" min="2" max="12" step="1" value="${s.warsonShields}" data-ed-change="warsonShields" />
+                  </div>
+                  <div class="ed-field">
+                    <span class="ed-label">受击无敌间隔: <b>${s.warsonCooldown}s</b></span>
+                    <input type="range" class="ed-range" min="0.4" max="2.5" step="0.1" value="${s.warsonCooldown}" data-ed-change="warsonCooldown" />
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
+            ${s.levelType === 4 ? `
+              <div class="ed-sec">
+                <div class="ed-sec-head">
+                  <span class="ed-sec-title">🐍 贪吃蛇危机挑战专属配置 (Snake Mode)</span>
+                </div>
+                <div class="ed-grid-2">
+                  <div class="ed-field">
+                    <span class="ed-label">贪吃蛇珠链总节数: <b>${s.snakeSegments} 节</b></span>
+                    <input type="range" class="ed-range" min="12" max="60" step="2" value="${s.snakeSegments}" data-ed-change="snakeSegments" />
+                  </div>
+                  <div class="ed-field">
+                    <span class="ed-label">贪吃蛇推进速度: <b>${s.snakeSpeed}x</b></span>
+                    <input type="range" class="ed-range" min="1.0" max="5.5" step="0.25" value="${s.snakeSpeed}" data-ed-change="snakeSpeed" />
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+          `;
+        } else if (tab === 'balls') {
+          const q = Array.isArray(s.fixedShooterQueue) ? s.fixedShooterQueue : [];
+          const queueDots = q.length > 0
+            ? q.map((cIdx, idx) => {
+                const hex = s.paletteHexes[cIdx % s.colorsCount] || '#FF2E55';
+                return `<div class="ed-q-dot" style="background:${esc(hex)};" title="点击移除第 ${idx + 1} 球" data-ed-act="remove_queue_at" data-idx="${idx}">${idx + 1}</div>`;
+              }).join('')
+            : `<span style="font-size:12px;color:#93b3e8;">当前未固定队列：发射器将从本关存活的球面颜色中智能随机出球。点击下方色球可编排固定发球顺序！</span>`;
+
+          const addQueueBtns = s.paletteHexes.slice(0, s.colorsCount).map((hex, cIdx) => `
+            <button type="button" class="ed-btn" style="display:flex;align-items:center;gap:5px;" data-ed-act="push_queue_color" data-cidx="${cIdx}">
+              <span style="width:12px;height:12px;border-radius:50%;background:${esc(hex)};display:inline-block;border:1px solid #fff;"></span>
+              +球色${cIdx + 1}
+            </button>
+          `).join('');
+
+          bodyHtml = `
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🎯 本关可用发射步数预算 (Shot Budget)</span>
+                <span class="ed-sec-badge">当前 ${s.shots} 步 · 理论最少 ${diag.estimatedMinShots} 步</span>
+              </div>
+              <label class="ed-row" style="cursor:pointer;">
+                <span class="ed-label">使用原版公式根据球数与层数自动计算步数</span>
+                <input type="checkbox" ${s.autoShots ? 'checked' : ''} data-ed-change="autoShots" style="width:18px;height:18px;" />
+              </label>
+              <div class="ed-row">
+                <span class="ed-label">本关可用总球数: <b>${s.shots} 球</b> (1~99球)</span>
+                <input type="range" class="ed-range" min="1" max="99" step="1" value="${s.shots}" data-ed-change="shots" style="width:180px;" />
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🎱 自定义发射球颜色队列 (共 ${q.length} 球固定序列)</span>
+                <div style="display:flex;gap:4px;">
+                  <button type="button" class="ed-btn" data-ed-act="random_queue_10">🎲 随机排10球</button>
+                  <button type="button" class="ed-btn danger" data-ed-act="clear_queue">清空队列</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">${addQueueBtns}</div>
+              <div class="ed-queue-strip">${queueDots}</div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🚀 首发强制特殊球 & 初始道具库存</span>
+              </div>
+              <div class="ed-grid-2">
+                <div class="ed-field">
+                  <span class="ed-label">开局第 1 球强制变为特殊球</span>
+                  <select class="ed-select" data-ed-change="forceBall">
+                    <option value="" ${!s.forceBall ? 'selected' : ''}>正常普通彩球开局</option>
+                    <option value="rainbow" ${s.forceBall === 'rainbow' ? 'selected' : ''}>🌈 首发强制彩虹球</option>
+                    <option value="bomb" ${s.forceBall === 'bomb' ? 'selected' : ''}>💣 首发强制爆破炸弹球</option>
+                    <option value="propeller" ${s.forceBall === 'propeller' ? 'selected' : ''}>🚁 首发强制螺旋桨飞弹球</option>
+                  </select>
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">右侧漏斗连击满格奖励道具</span>
+                  <select class="ed-select" data-ed-change="streakRewardType">
+                    <option value="rainbow" ${s.streakRewardType === 'rainbow' ? 'selected' : ''}>🌈 充能满送彩虹球</option>
+                    <option value="bomb" ${s.streakRewardType === 'bomb' ? 'selected' : ''}>💣 充能满送炸弹球</option>
+                    <option value="propeller" ${s.streakRewardType === 'propeller' ? 'selected' : ''}>🚁 充能满送螺旋桨球</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ed-grid-3">
+                <div class="ed-field">
+                  <span class="ed-label">🌈 初始彩虹球: <b>${s.initialBoosters.rainbow}</b></span>
+                  <input type="range" class="ed-range" min="0" max="9" step="1" value="${s.initialBoosters.rainbow}" data-ed-booster="rainbow" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">💣 初始炸弹球: <b>${s.initialBoosters.bomb}</b></span>
+                  <input type="range" class="ed-range" min="0" max="9" step="1" value="${s.initialBoosters.bomb}" data-ed-booster="bomb" />
+                </div>
+                <div class="ed-field">
+                  <span class="ed-label">🚁 初始螺旋桨: <b>${s.initialBoosters.propeller}</b></span>
+                  <input type="range" class="ed-range" min="0" max="9" step="1" value="${s.initialBoosters.propeller}" data-ed-booster="propeller" />
+                </div>
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">⭐ 中心星核规则与限制开关</span>
+              </div>
+              <div class="ed-row">
+                <span class="ed-label">激活中心星核所需消除次数: <b>${s.starMaxHits} 次</b> (1~10次)</span>
+                <input type="range" class="ed-range" min="1" max="10" step="1" value="${s.starMaxHits}" data-ed-change="starMaxHits" style="width:150px;" />
+              </div>
+              <div class="ed-grid-2">
+                <label class="ed-row" style="cursor:pointer;">
+                  <span class="ed-label">禁用中心星核 (需清光全部珍珠)</span>
+                  <input type="checkbox" ${s.noStar ? 'checked' : ''} data-ed-change="noStar" style="width:18px;height:18px;" />
+                </label>
+                <label class="ed-row" style="cursor:pointer;">
+                  <span class="ed-label">禁用主副球切换 (noSwitch)</span>
+                  <input type="checkbox" ${s.noSwitch ? 'checked' : ''} data-ed-change="noSwitch" style="width:18px;height:18px;" />
+                </label>
+                <label class="ed-row" style="cursor:pointer;">
+                  <span class="ed-label">禁用双球槽扩展 (noDouble)</span>
+                  <input type="checkbox" ${s.noDouble ? 'checked' : ''} data-ed-change="noDouble" style="width:18px;height:18px;" />
+                </label>
+                <label class="ed-row" style="cursor:pointer;">
+                  <span class="ed-label">禁用底部特殊道具栏 (noSpecial)</span>
+                  <input type="checkbox" ${s.noSpecial ? 'checked' : ''} data-ed-change="noSpecial" style="width:18px;height:18px;" />
+                </label>
+              </div>
+            </div>
+          `;
+        } else if (tab === 'pack') {
+          const officialOptions = [];
+          for (let lv = 1; lv <= 140; lv++) {
+            officialOptions.push(`<option value="${lv}" ${editorState.templateLevelNum === lv ? 'selected' : ''}>官方第 ${lv} 关</option>`);
+          }
+          const savedList = loadSavedCustomPack();
+          const savedHtml = savedList.length > 0
+            ? savedList.map((item, idx) => `
+                <div class="ed-pack-item">
+                  <div class="ed-pack-meta">
+                    <span class="ed-pack-name">${esc(item.title || ('自定义关卡 ' + (idx + 1)))}</span>
+                    <span class="ed-pack-sub">模式:${item.levelType || 0} · ${item.layersCount || 3}层 · ${item.colorsCount || 5}色 · ${item.shots || 25}步</span>
+                  </div>
+                  <div style="display:flex;gap:5px;">
+                    <button type="button" class="ed-btn primary" data-ed-act="load_pack_item" data-idx="${idx}">载入</button>
+                    <button type="button" class="ed-btn success" data-ed-act="play_pack_item" data-idx="${idx}">试玩</button>
+                    <button type="button" class="ed-btn danger" data-ed-act="delete_pack_item" data-idx="${idx}">删除</button>
+                  </div>
+                </div>
+              `).join('')
+            : `<div style="font-size:12px;color:#93b3e8;padding:8px 0;">暂未保存自定义关卡，点击上方「💾 保存到关卡库」即可永久保存在浏览器中。</div>`;
+
+          editorState.exportText = formatExportPayload();
+
+          bodyHtml = `
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">📥 从官方 140 关或特殊关载入为编辑模板</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select class="ed-select" id="edOfficialLvlSelect" style="flex:1;">${officialOptions.join('')}</select>
+                <button type="button" class="ed-btn primary" data-ed-act="load_official_lvl">载入该关配置</button>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="ed-btn" data-ed-act="load_special_cfg" data-lvl="72" data-cfg="Level_3-26_Warson">👾 载入瓦森首领关</button>
+                <button type="button" class="ed-btn" data-ed-act="load_special_cfg" data-lvl="26" data-cfg="Snake_01">🐍 载入贪吃蛇关</button>
+                <button type="button" class="ed-btn" data-ed-act="load_special_cfg" data-lvl="15" data-cfg="Bonus_01">🪙 载入珍珠奖励关</button>
+                <button type="button" class="ed-btn" data-ed-act="load_special_cfg" data-lvl="77" data-cfg="Level_4-1_BubbleRock_Tutorial">🪨 载入岩石球教学关</button>
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🗂️ 我的本地自定义关卡库 (${savedList.length})</span>
+                <button type="button" class="ed-btn success" data-ed-act="save_to_pack">💾 保存当前关卡到库</button>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;max-height:190px;overflow-y:auto;">
+                ${savedHtml}
+              </div>
+            </div>
+
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">💻 导出 / 导入 JSON 与小程序引擎代码</span>
+                <div style="display:flex;gap:5px;">
+                  <button type="button" class="ed-btn ${editorState.exportFormat === 'json' ? 'primary' : ''}" data-ed-act="set_export_fmt" data-fmt="json">JSON 格式</button>
+                  <button type="button" class="ed-btn ${editorState.exportFormat === 'code' ? 'primary' : ''}" data-ed-act="set_export_fmt" data-fmt="code">LEVEL_CONFIGS 代码</button>
+                </div>
+              </div>
+              <textarea id="edExportTextarea" class="ed-textarea" spellcheck="false">${esc(editorState.exportText)}</textarea>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="ed-btn primary" data-ed-act="copy_export">📋 复制配置代码</button>
+                <button type="button" class="ed-btn warn" data-ed-act="import_from_textarea">📥 从上方文本框导入</button>
+                <button type="button" class="ed-btn success" data-ed-act="copy_share_url">🔗 复制含此关卡的试玩链接</button>
+              </div>
+            </div>
+          `;
+        }
+
+        editorDock.innerHTML = `
+          <div class="ed-header">
+            <div class="ed-title-box">
+              <h2 class="ed-title">🛠️ 珍珠宝石 3D 关卡编辑器</h2>
+              <p class="ed-sub">实时 WebGL 球面点涂 · 剖层透视 · 11种排布 · 障碍与发球队列全配置</p>
+            </div>
+            <div class="ed-head-actions">
+              <button type="button" class="ed-btn ${editorState.interactionMode === 'play' ? 'warn' : 'success'}" data-ed-act="toggle_play">
+                ${editorState.interactionMode === 'play' ? '🛠️ 返回编辑' : '▶️ 立即试玩'}
+              </button>
+              <button type="button" class="ed-btn primary" data-ed-act="save_to_pack">💾 保存</button>
+              <button type="button" class="ed-btn danger" data-ed-act="close_editor">退出</button>
+            </div>
+          </div>
+
+          <div id="edDiagStrip" class="ed-diag-strip">
+            <div class="ed-diag-card">
+              <span class="ed-diag-val">${diag.totalPearls}</span>
+              <span class="ed-diag-lbl">珍珠总数 (${layerStr})</span>
+            </div>
+            <div class="ed-diag-card">
+              <span class="ed-diag-val">${diag.colorZonesCount}</span>
+              <span class="ed-diag-lbl">同色连通簇</span>
+            </div>
+            <div class="ed-diag-card">
+              <span class="ed-diag-val">${diag.estimatedMinShots} / ${shots}</span>
+              <span class="ed-diag-lbl" style="color:${statusColor};">${statusLabel}</span>
+            </div>
+            <div class="ed-diag-card">
+              <span class="ed-diag-val" style="color:#ffd452;">${starsStr}</span>
+              <span class="ed-diag-lbl">综合难度评级</span>
+            </div>
+          </div>
+
+          <div class="ed-tabs">
+            <button type="button" class="ed-tab ${tab === 'style' ? 'active' : ''}" data-ed-tab="style">🎨 样式与球层</button>
+            <button type="button" class="ed-tab ${tab === 'obstacles' ? 'active' : ''}" data-ed-tab="obstacles">🛡️ 障碍与模式</button>
+            <button type="button" class="ed-tab ${tab === 'balls' ? 'active' : ''}" data-ed-tab="balls">🎱 本关球与规则</button>
+            <button type="button" class="ed-tab ${tab === 'pack' ? 'active' : ''}" data-ed-tab="pack">📦 模板与导出</button>
+          </div>
+
+          <div class="ed-body">${bodyHtml}</div>
+        `;
+      }
+
+      document.getElementById('sideOpenEditorBtn')?.addEventListener('click', () => {
+        openLevelEditor();
+      });
+
+      editorVpHud?.addEventListener('pointerdown', (e) => e.stopPropagation());
+      editorVpHud?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const btn = e.target.closest('[data-ed-vp]');
+        if (!btn) return;
+        const act = btn.getAttribute('data-ed-vp');
+        if (act === 'mode') {
+          setEditorInteractionMode(btn.getAttribute('data-mode') || 'inspect');
+        } else if (act === 'toggle_freeze') {
+          editorState.freezeRotation = !editorState.freezeRotation;
+          applyLayerVisibilityToSphere();
+          renderEditorViewportHud();
+        } else if (act === 'rebuild') {
+          applyEditorSpecToEngine(true);
+          showToast('已重新生成当前 3D 球面');
+        } else if (act === 'layer_all') {
+          editorState.isolateLayer = -1;
+          editorState.peelOuterLayers = 0;
+          applyLayerVisibilityToSphere();
+          renderEditorViewportHud();
+        } else if (act === 'layer_iso') {
+          const lv = Number(btn.getAttribute('data-layer') || 0);
+          editorState.isolateLayer = editorState.isolateLayer === lv ? -1 : lv;
+          editorState.peelOuterLayers = 0;
+          applyLayerVisibilityToSphere();
+          renderEditorViewportHud();
+        } else if (act === 'layer_peel') {
+          editorState.isolateLayer = -1;
+          editorState.peelOuterLayers = Number(btn.getAttribute('data-peel') || 0);
+          applyLayerVisibilityToSphere();
+          renderEditorViewportHud();
+        } else if (act === 'brush_color') {
+          editorState.brush.mode = 'color';
+          editorState.brush.colorIndex = Number(btn.getAttribute('data-cidx') || 0);
+          syncEditorBrushToEngine();
+          renderEditorViewportHud();
+        } else if (act === 'brush_mode') {
+          editorState.brush.mode = btn.getAttribute('data-bmode') || 'color';
+          syncEditorBrushToEngine();
+          renderEditorViewportHud();
+        } else if (act === 'brush_scope') {
+          editorState.brush.scope = btn.getAttribute('data-scope') || 'single';
+          syncEditorBrushToEngine();
+          renderEditorViewportHud();
+        } else if (act === 'clear_overrides') {
+          editorState.spec.pearlOverrides = {};
+          if (engine.sphere) engine.sphere.pearlOverrides = {};
+          applyEditorSpecToEngine(false);
+          showToast('已清空全部手绘修改');
+        }
+      });
+
+      editorDock?.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest('[data-ed-tab]');
+        if (tabBtn) {
+          editorState.activeTab = tabBtn.getAttribute('data-ed-tab') || 'style';
+          renderEditorDock();
+          return;
+        }
+        const actBtn = e.target.closest('[data-ed-act]');
+        if (!actBtn) return;
+        const act = actBtn.getAttribute('data-ed-act');
+        const s = editorState.spec;
+
+        if (act === 'close_editor') {
+          closeLevelEditor();
+        } else if (act === 'toggle_play') {
+          setEditorInteractionMode(editorState.interactionMode === 'play' ? 'inspect' : 'play');
+        } else if (act === 'random_seed') {
+          s.seed = Math.floor(100 + Math.random() * 98900);
+          s.pearlOverrides = {};
+          applyEditorSpecToEngine(false);
+        } else if (act === 'set_pattern') {
+          s.patternType = Number(actBtn.getAttribute('data-val') || 0);
+          applyEditorSpecToEngine(true);
+        } else if (act === 'set_level_type') {
+          s.levelType = Number(actBtn.getAttribute('data-val') || 0);
+          applyEditorSpecToEngine(true);
+        } else if (act === 'apply_palette_preset') {
+          const preset = PALETTE_PRESETS[Number(actBtn.getAttribute('data-idx') || 0)];
+          if (preset) {
+            s.paletteHexes = preset.hexes.slice();
+            applyEditorSpecToEngine(true);
+            showToast(`已应用「${preset.name}」配色盘`);
+          }
+        } else if (act === 'switch_to_paint') {
+          editorState.brush.mode = 'rock';
+          setEditorInteractionMode('paint');
+        } else if (act === 'push_queue_color') {
+          const cIdx = Number(actBtn.getAttribute('data-cidx') || 0);
+          s.fixedShooterQueue.push(cIdx);
+          applyEditorSpecToEngine(true);
+        } else if (act === 'remove_queue_at') {
+          const idx = Number(actBtn.getAttribute('data-idx') || 0);
+          s.fixedShooterQueue.splice(idx, 1);
+          applyEditorSpecToEngine(true);
+        } else if (act === 'random_queue_10') {
+          s.fixedShooterQueue = Array.from({ length: 10 }, () => Math.floor(Math.random() * s.colorsCount));
+          applyEditorSpecToEngine(true);
+        } else if (act === 'clear_queue') {
+          s.fixedShooterQueue = [];
+          applyEditorSpecToEngine(true);
+        } else if (act === 'load_official_lvl') {
+          const sel = document.getElementById('edOfficialLvlSelect');
+          const lv = Number(sel ? sel.value : 1);
+          editorState.templateLevelNum = lv;
+          importOfficialLevelIntoEditor(lv, null);
+        } else if (act === 'load_special_cfg') {
+          const lv = Number(actBtn.getAttribute('data-lvl') || 1);
+          const cfg = actBtn.getAttribute('data-cfg') || null;
+          importOfficialLevelIntoEditor(lv, cfg);
+        } else if (act === 'save_to_pack') {
+          const list = loadSavedCustomPack();
+          const copy = JSON.parse(JSON.stringify(s));
+          copy.savedAt = Date.now();
+          list.unshift(copy);
+          saveCustomPackList(list.slice(0, 50));
+          renderEditorDock();
+          showToast(`💾 已保存「${s.title}」到本地关卡库！`);
+        } else if (act === 'load_pack_item' || act === 'play_pack_item') {
+          const list = loadSavedCustomPack();
+          const item = list[Number(actBtn.getAttribute('data-idx') || 0)];
+          if (item) {
+            editorState.spec = { ...createDefaultEditorSpec(), ...item };
+            editorState.interactionMode = act === 'play_pack_item' ? 'play' : 'inspect';
+            applyEditorSpecToEngine(false);
+            showToast(`${act === 'play_pack_item' ? '▶️ 正在试玩' : '📥 已载入'}：${item.title}`);
+          }
+        } else if (act === 'delete_pack_item') {
+          const list = loadSavedCustomPack();
+          list.splice(Number(actBtn.getAttribute('data-idx') || 0), 1);
+          saveCustomPackList(list);
+          renderEditorDock();
+          showToast('已从本地关卡库删除');
+        } else if (act === 'set_export_fmt') {
+          editorState.exportFormat = actBtn.getAttribute('data-fmt') || 'json';
+          renderEditorDock();
+        } else if (act === 'copy_export') {
+          const ta = document.getElementById('edExportTextarea');
+          const txt = ta ? ta.value : formatExportPayload();
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(() => showToast('📋 配置代码已复制到剪贴板！'));
+          } else if (ta) {
+            ta.select();
+            document.execCommand('copy');
+            showToast('📋 配置代码已复制！');
+          }
+        } else if (act === 'import_from_textarea') {
+          const ta = document.getElementById('edExportTextarea');
+          if (!ta || !ta.value.trim()) return;
+          try {
+            const parsed = JSON.parse(ta.value.trim());
+            editorState.spec = { ...createDefaultEditorSpec(), ...parsed };
+            applyEditorSpecToEngine(false);
+            showToast('📥 成功导入自定义关卡配置！');
+          } catch (err) {
+            showToast('导入失败：请确认文本框内为合法的 JSON 格式');
+          }
+        } else if (act === 'copy_share_url') {
+          try {
+            const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(editorState.spec))));
+            const shareUrl = `${location.origin}${location.pathname}?editor=1#custom=${b64}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(shareUrl).then(() => showToast('🔗 含关卡配置的专属试玩链接已复制！'));
+            } else {
+              showToast('🔗 已生成试玩链接');
+            }
+          } catch (_) {
+            showToast('生成分享链接失败');
+          }
+        }
+      });
+
+      editorDock?.addEventListener('input', (e) => {
+        const el = e.target;
+        const s = editorState.spec;
+        const inType = el.getAttribute('data-ed-input');
+        if (inType === 'rot_speed') {
+          const li = Number(el.getAttribute('data-layer') || 0);
+          s.rotSpeeds[li] = Number(el.value || 0);
+          if (engine.sphere && engine.sphere.layers[li]) {
+            engine.sphere.layers[li].baseRotSpeed = s.rotSpeeds[li];
+            engine.sphere.layers[li].rotSpeed = s.rotSpeeds[li];
+          }
+          renderEditorDock();
+          return;
+        }
+        if (inType === 'palette_hex') {
+          const cIdx = Number(el.getAttribute('data-cidx') || 0);
+          s.paletteHexes[cIdx] = el.value.toUpperCase();
+          applyEditorSpecToEngine(true);
+          return;
+        }
+        if (inType === 'bgTop' || inType === 'bgBot') {
+          s[inType] = el.value.toUpperCase();
+          applyEditorSpecToEngine(true);
+          return;
+        }
+      });
+
+      editorDock?.addEventListener('change', (e) => {
+        const el = e.target;
+        const s = editorState.spec;
+        const boosterKey = el.getAttribute('data-ed-booster');
+        if (boosterKey) {
+          s.initialBoosters[boosterKey] = Number(el.value || 0);
+          applyEditorSpecToEngine(true);
+          return;
+        }
+        const key = el.getAttribute('data-ed-change');
+        if (!key) return;
+        if (el.type === 'checkbox') {
+          s[key] = !!el.checked;
+        } else if (['title', 'rotationPattern', 'patternSprite', 'decorSprite', 'satelliteKind', 'forceBall', 'streakRewardType'].includes(key)) {
+          s[key] = el.value;
+        } else {
+          s[key] = Number(el.value);
+        }
+
+        if (key === 'worldIndex') {
+          const w = WORLDS[s.worldIndex] || WORLDS[0];
+          s.paletteHexes = getWorldPaletteHexes(w);
+          s.bgTop = rgbArrToHex(w.bgTop);
+          s.bgBot = rgbArrToHex(w.bgBot);
+          s.patternSprite = w.pat || 'pat_checker.png';
+          s.decorSprite = w.decor || '';
+        } else if (key === 'shots') {
+          s.autoShots = false;
+        } else if (['layersCount', 'startRadius', 'minSeeds', 'maxSeeds'].includes(key)) {
+          s.pearlOverrides = {};
+        }
+        applyEditorSpecToEngine(true);
+      });
+
+      // Auto-launch editor if requested via URL (?editor=1, #editor, #custom=..., or window.__BOOT_EDITOR__)
+      setTimeout(() => {
+        try {
+          const hash = location.hash || '';
+          if (hash.startsWith('#custom=')) {
+            const jsonStr = decodeURIComponent(escape(atob(hash.slice('#custom='.length))));
+            const parsed = JSON.parse(jsonStr);
+            editorState.spec = { ...createDefaultEditorSpec(), ...parsed };
+            openLevelEditor();
+            return;
+          }
+          const params = new URLSearchParams(location.search || '');
+          if (window.__BOOT_EDITOR__ || params.get('editor') === '1' || hash === '#editor') {
+            openLevelEditor();
+          }
+        } catch (_) {}
+      }, 60);
 
       let pointerActive = false;
       function localCoords(e) {
