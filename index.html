@@ -4806,7 +4806,7 @@ const SHOP_CAPSULES = [
   }
 ];
 
-const CONTINUE_COST_COINS = 60;
+const CONTINUE_COST_COINS = 100;
 const CONTINUE_EXTRA_SHOTS = 5;
 const DOUBLE_SWITCH_UNLOCK_GLOBAL = 25; // World 2 Level 10 (Level_2-10_Double_Switch_Tutorial)
 const RAINBOW_UNLOCK_GLOBAL = 13;       // World 1 Level 13 (Level_1-13_RainbowBalls_Tutorial)
@@ -4875,6 +4875,35 @@ function computeOfficialShotBudget(layers, startRadius, colorCount, shieldCfg, e
 }
 
 /**
+ * BallShooter.Start() + Level.CalculateMinimumNumberOfBallsNeededToFinish():
+ * - minBalls = count of unexploded ColorZones over all layers
+ * - balls = CeilToInt(minBalls * K)   (K is a .rodata literal; 1.25 retained as estimate)
+ * - LevelIndex > 20 && LevelIndex % 3 == 0 -> balls -= 1   (LevelIndex = 0-based index in world)
+ * - if (!levelConfig.isCustom) balls += world.ballAdjustment
+ * - balls = Max(balls, 3), then + shield.extraBalls
+ */
+function computeDynamicShotBudgetFromSphere(sphere, desc) {
+  if (!desc) return 20;
+  if (!sphere || sphere.isSnakeLevel || desc.levelType === 1 || (desc.explicitBalls && desc.explicitBalls > 0)) {
+    return desc.shots;
+  }
+  const minBalls = typeof sphere.calculateMinimumBallsNeededToFinish === 'function'
+    ? sphere.calculateMinimumBallsNeededToFinish()
+    : (sphere.colorZones ? sphere.colorZones.length : 16);
+  let balls = Math.ceil(minBalls * 1.25);
+  const li = typeof desc.levelIndex === 'number' ? desc.levelIndex : Math.max(0, (desc.levelInWorld || 1) - 1);
+  if (li > 20 && li % 3 === 0) {
+    balls -= 1;
+  }
+  if (!desc.isCustom) {
+    balls += Number(desc.worldBallAdj) || 0;
+  }
+  balls = Math.max(3, balls);
+  balls += Number(desc.shieldExtraBalls) || 0;
+  return balls;
+}
+
+/**
  * Resolve full runtime level descriptor from either:
  * - global campaign level (1..450+)
  * - explicit official config name (e.g. 'Bonus_01', 'Snake_01', 'daily_easy01', 'GemQuest_01_Level_01', 'HolidaySparkle_01_Level_01')
@@ -4889,11 +4918,13 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     cfgName = world.overrides[levelInWorld - 1] || null;
   }
 
-  // Periodic Bonus Coin level & Snake special level on non-override slots
-  if (!cfgName && globalLevel > 15 && levelInWorld % 8 === 0 && BONUS_LEVEL_NAMES.length > 0) {
-    cfgName = BONUS_LEVEL_NAMES[(Math.floor(globalLevel / 8) - 1) % BONUS_LEVEL_NAMES.length];
-  } else if (!cfgName && globalLevel >= 26 && levelInWorld === 11 && SNAKE_LEVEL_NAMES.length > 0) {
-    cfgName = SNAKE_LEVEL_NAMES[Math.floor(globalLevel / 11) % SNAKE_LEVEL_NAMES.length];
+  // GameManager.GetLevelTypeForCurrentLevel(): only Bonus (LevelIndex > 20 && LevelIndex % 25 == 0 &&
+  // world.bonusLevelConfig != null) on non-override slots; Snake is never auto-selected (InitSnakeLevel is an empty stub).
+  // Level.Start then uses world.bonusLevelConfig (one fixed Bonus config per world).
+  const levelIndex = levelInWorld - 1;
+  if (!cfgName && levelIndex > 20 && levelIndex % 25 === 0 && BONUS_LEVEL_NAMES.length > 0) {
+    cfgName = world.bonusLevelConfig ||
+      BONUS_LEVEL_NAMES[Math.max(0, (world.index || 1) - 1) % BONUS_LEVEL_NAMES.length];
   }
 
   const rawCfg = cfgName ? (LEVEL_CONFIGS[cfgName] || SNAKE_CONFIGS[cfgName] || null) : null;
@@ -4964,23 +4995,75 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     gift = rawCfg.gift || null;
     parallax = !!rawCfg.parallax;
   } else {
-    layersCount = globalLevel <= 6 ? 2 : globalLevel <= 20 ? (rng() < 0.5 ? 2 : 3) : 2 + Math.floor(rng() * 3);
-    startRadius = 5 + Math.floor(rng() * 2);
-    const patterns = globalLevel < 16 ? [0] : globalLevel < 46 ? [0, 1, 8, 10] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    patternType = patterns[Math.floor(rng() * patterns.length)];
-    minSeeds = patternType === 0 ? 6 + Math.floor(rng() * 8) : 4;
-    maxSeeds = minSeeds + 6;
+    // LevelConfig.GenerateLevelParameters(levelIndex, worldIndex, worldConfig):
+    const wIdx = world.index || 1;
+    const isEvery5th = levelInWorld % 5 === 0;
+    if (isEvery5th) {
+      layersCount = 1 + (2 + Math.floor(rng() * (Math.min(wIdx, 3) + 4)));
+      startRadius = 2 + (4 + Math.floor(rng() * 5));
+      while (layersCount + startRadius > 12 && startRadius > 4) startRadius--;
+      while (layersCount + startRadius > 12 && layersCount > 2) layersCount--;
+    } else {
+      layersCount = 1 + (1 + Math.floor(rng() * (Math.min(wIdx, 3) + 3)));
+      startRadius = 2 + (2 + Math.floor(rng() * 5));
+      while (layersCount + startRadius > 12 && startRadius > 4) startRadius--;
+      while (layersCount + startRadius > 12 && layersCount > 2) layersCount--;
+    }
+
+    // LevelConfig.PickPattern(worldConfig.patternChances) weighted selection
+    const patternPool = globalLevel < 16
+      ? [{ pat: 0, w: 1.0 }]
+      : globalLevel < 46
+        ? [{ pat: 0, w: 0.55 }, { pat: 1, w: 0.25 }, { pat: 8, w: 0.10 }, { pat: 10, w: 0.10 }]
+        : [
+            { pat: 0, w: 0.36 },
+            { pat: 1, w: 0.14 },
+            { pat: 2, w: 0.14 },
+            { pat: 3, w: 0.06 },
+            { pat: 4, w: 0.05 },
+            { pat: 5, w: 0.05 },
+            { pat: 6, w: 0.04 },
+            { pat: 7, w: 0.04 },
+            { pat: 8, w: 0.04 },
+            { pat: 9, w: 0.04 },
+            { pat: 10, w: 0.04 }
+          ];
+    let pickRoll = rng();
+    patternType = 0;
+    for (let i = 0; i < patternPool.length; i++) {
+      if (pickRoll < patternPool[i].w) {
+        patternType = patternPool[i].pat;
+        break;
+      }
+      pickRoll -= patternPool[i].w;
+    }
+    // LevelConfig.GenerateLevelParameters lines 818-823: if (patternType != 0 && layersCount > 3) layersCount = 3
+    if (patternType !== 0 && layersCount > 3) {
+      layersCount = 3;
+    }
+
+    // minSeeds = Random.Range(3, 15), maxSeeds = minSeeds + Random.Range(5, Min(levelIndex / 3, 20) + 25)
+    minSeeds = 3 + Math.floor(rng() * 12);
+    maxSeeds = minSeeds + 5 + Math.floor(rng() * (Math.min(Math.floor(levelIndex / 3), 20) + 20));
+
     if (rng() < (world.shieldChance || 0)) {
-      shieldCfg = { rotX: 16, rotY: 8, extraBalls: 5 };
+      shieldCfg = { rotX: 16, rotY: 8, extraBalls: 3 };
     }
     if (rng() < (world.satChance || 0)) {
-      satCount = rng() < 0.35 ? 2 : 1;
+      satCount = 1 + Math.floor(rng() * 3); // Random.Range(1, 4) -> 1..3 satellites
       satType = globalLevel >= 48 && rng() < 0.4 ? 'star' : 'coin';
     }
-    if (globalLevel >= 36 && rng() < 0.28) propChance = 0.22;
-    if (globalLevel >= 44 && rng() < 0.24) colorBomb = true;
-    if (globalLevel >= 52 && rng() < 0.26) rotPattern = 'yoyo';
-    if (globalLevel >= 77 && rng() < 0.22) rockChance = 0.16;
+    if ((levelIndex > 20 || wIdx > 1) && globalLevel >= 36 && rng() < 0.28) {
+      propChance = rng() * 0.50; // LevelConfig.GenerateLevelParameters: Random.Range(0f, 0.5f)
+    }
+    if (globalLevel >= 52 && rng() < 0.26) {
+      rotPattern = 'yoyo';
+      if (layersCount > 6) layersCount = 6;
+    }
+    if (startRadius <= 7 && globalLevel >= 77 && rng() < 0.22) {
+      // LevelConfig.GenerateLevelParameters: 74% -> Random.Range(0.1f, 0.3f), 26% -> Random.Range(0.3f, 0.7f)
+      rockChance = rng() < 0.74 ? (0.10 + rng() * 0.20) : (0.30 + rng() * 0.40);
+    }
     if (globalLevel >= 92 && rng() < 0.30) {
       parallax = true;
       rotSpeeds = [12, -16, 20, -24];
@@ -5006,22 +5089,34 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     world.ballAdj || 0
   );
 
-  // Atomic Unity Level.Build + SphereLayer.CalculateNumberOfBubbles:
+  // Atomic Unity Level.Build + LevelConfig.CalculateNumberOfBubblesInLayer / SphereLayer.CalculateNumberOfBubbles:
   // l = 0 is OUTERMOST layer (maxOuterRadius), l = layersCount - 1 is INNERMOST layer (startRadius).
+  // SphereLayer.CalculateNumberOfBubbles: floor(((layerRadius / 0.23) ** 2) * 0.85) (monobehaviour_params.json)
   const maxOuterRadius = startRadius + Math.max(0, layersCount - 1);
   const layers = [];
   for (let l = 0; l < layersCount; l++) {
     const rWorld = startRadius + (layersCount - 1 - l);
     const count = Math.floor(Math.pow(rWorld / 0.23, 2) * 0.85);
-    const clampedCount = Math.min(780, Math.max(120, count));
+    const clampedCount = Math.min(2400, Math.max(12, count));
     const rotDegPerSec = rotSpeeds && rotSpeeds[l] !== undefined
       ? (parallax && l % 2 === 1 ? -Math.abs(rotSpeeds[l]) : rotSpeeds[l])
       : (rotPattern === 'yoyo' ? 24.0 : 14.0);
+    // Level.Build seedsCount: for range levels, (int)(r/2) + Random.Range(minSeeds, (int)r + maxSeeds) clamped to (int)r * 2
+    let seeds;
+    if (minSeeds < maxSeeds) {
+      const halfR = Math.floor(rWorld / 2);
+      seeds = rWorld < 4
+        ? halfR + 2 + Math.floor(rng() * 6)
+        : halfR + minSeeds + Math.floor(rng() * Math.max(1, Math.floor(rWorld) + maxSeeds - minSeeds));
+      seeds = Math.min(Math.floor(rWorld) * 2, Math.max(1, seeds));
+    } else {
+      seeds = Math.max(1, minSeeds);
+    }
     layers.push({
       index: l,
       radius: rWorld,
       count: clampedCount,
-      seeds: Math.max(colors.length, Math.round(minSeeds + rng() * Math.max(0, maxSeeds - minSeeds))),
+      seeds,
       rotSpeedRad: (rotDegPerSec * Math.PI) / 180
     });
   }
@@ -5127,6 +5222,8 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     worldNameEn: `第 ${world.index} 星球`,
     worldNameZh: `第 ${world.index} 星球`,
     levelInWorld,
+    levelIndex: levelInWorld - 1,
+    isCustom: !!explicitConfigName,
     displayTitleEn,
     displayTitleZh,
     levelType,
@@ -5136,10 +5233,12 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     maxOuterRadius,
     colors,
     shots,
+    explicitBalls: (rawCfg && rawCfg.balls) || 0,
+    worldBallAdj: world.ballAdj || 0,
     layers,
     glassShields,
     metalShields,
-    shieldExtraBalls: shieldCfg ? Math.max(0, Number(shieldCfg.extraBalls) || 5) : 0,
+    shieldExtraBalls: shieldCfg ? Math.max(0, Number(shieldCfg.extraBalls) || 3) : 0,
     satellites: satCount,
     satelliteType: satType,
     propellerChance: propChance,
@@ -5354,6 +5453,7 @@ module.exports = {
   getWorldByIndex,
   getDailyStagesForDate,
   computeOfficialShotBudget,
+  computeDynamicShotBudgetFromSphere,
   resolveLevelDescriptor,
   buildCustomLevelDescriptor
 };
@@ -5373,6 +5473,7 @@ __register('./storage', function(module, exports, require) {
 
 const {
   WORLDS,
+  WORLD_RANGES,
   GEMS,
   RARITIES,
   DUCK_CATALOG,
@@ -5399,6 +5500,7 @@ const DEFAULT_DATA = {
   coins: 250,
   level: 1,
   maxUnlockedLevel: 1,
+  worldLevelIndex: 0,
   planetWorldIndex: 1,
   planetGemsCleared: 0,
   planetCleanHits: [],        // [{ x, y, z, color, mesh }] hit points on active planet
@@ -5416,6 +5518,7 @@ const DEFAULT_DATA = {
   rainbowBalls: 3,
   bombBalls: 2,
   propellerBalls: 2,
+  unlockedBoosters: [],       // Boosters explicitly unlocked via AddToSpecialBallCount (-1 -> >=0 transition)
   unlockedGems: {},
   unlockedGemOrder: [],
   newlyCraftedGemIds: [],
@@ -5464,6 +5567,7 @@ class StorageService {
     d.dailyCompleted = Array.isArray(raw && raw.dailyCompleted) ? raw.dailyCompleted.slice() : [];
     d.planetCleanHits = Array.isArray(raw && raw.planetCleanHits) ? raw.planetCleanHits.slice() : [];
     d.warsonTheftWorlds = Array.isArray(raw && raw.warsonTheftWorlds) ? raw.warsonTheftWorlds.slice() : [];
+    d.unlockedBoosters = Array.isArray(raw && raw.unlockedBoosters) ? raw.unlockedBoosters.slice() : [];
     d.collectedColors = Array.isArray(raw && raw.collectedColors) && raw.collectedColors.length > 0
       ? raw.collectedColors.slice(-24)
       : DEFAULT_DATA.collectedColors.slice();
@@ -5475,6 +5579,7 @@ class StorageService {
     d.redeemedCodes = Array.isArray(raw && raw.redeemedCodes) ? raw.redeemedCodes.slice() : [];
     d.dailyGiftDate = typeof (raw && raw.dailyGiftDate) === 'string' ? raw.dailyGiftDate : '';
     d.planetWorldIndex = Math.max(1, Math.min(WORLDS.length, Number(d.planetWorldIndex || 1)));
+    d.worldLevelIndex = Math.max(0, Number(d.worldLevelIndex || 0));
     d.level = Math.max(1, Number(d.level || 1));
     d.maxUnlockedLevel = Math.max(d.level, Number(d.maxUnlockedLevel || 1));
     d.gemHalfwayClaimed = !!(raw && raw.gemHalfwayClaimed);
@@ -5603,8 +5708,9 @@ class StorageService {
     const world = this.getActivePlanetWorld();
     const vals = world.gemValues || [1800, 10000, 14000];
     const nextOffset = (this.data.planetGemsCleared || 0) + (this.data.pendingPurifyGem ? 1 : 0);
-    const seg = Math.min(vals.length - 1, Math.max(0, nextOffset));
-    return Math.max(400, vals[seg] || 1800);
+    // WorldConfig.GetNextGemValue: n < gemValues.Count ? gemValues[n] : 500000
+    const n = Math.max(0, nextOffset);
+    return n < vals.length ? vals[n] : 500000;
   }
 
   addCollectedPearls(amount, colorHexList = null) {
@@ -5639,13 +5745,29 @@ class StorageService {
     return added;
   }
 
+  /**
+   * GameManager.AddToSpecialBallCount(type, diff):
+   * When locked (-1), base starts from 0 (Max(count, 0) + diff), and unlocks the booster!
+   */
+  addSpecialBall(type, diff) {
+    const key = type === 'rainbow' ? 'rainbowBalls' : type === 'bomb' ? 'bombBalls' : 'propellerBalls';
+    if (!Array.isArray(this.data.unlockedBoosters)) this.data.unlockedBoosters = [];
+    if (!this.data.unlockedBoosters.includes(type) && diff >= 0) {
+      this.data.unlockedBoosters.push(type);
+    }
+    const cur = typeof this.data[key] === 'number' ? this.data[key] : 0;
+    const base = cur < 0 ? 0 : cur;
+    this.data[key] = Math.max(0, base + diff);
+    this.save();
+    return this.data[key];
+  }
+
   checkAndClaimHalfwayGift() {
     const target = this.getCurrentGemTargetPearls();
     if (!this.data.gemHalfwayClaimed && (this.data.poolPearls || 0) >= target * 0.5) {
       this.data.gemHalfwayClaimed = true;
       this.data.coins = (this.data.coins || 0) + 50;
-      this.data.rainbowBalls = (this.data.rainbowBalls || 0) + 1;
-      this.save();
+      this.addSpecialBall('rainbow', 1);
       return { claimed: true, coins: 50, rainbow: 1 };
     }
     return null;
@@ -5661,12 +5783,14 @@ class StorageService {
     this.data.poolPearls -= target;
     this.data.gemHalfwayClaimed = false;
 
-    const totalCrafted = this.data.unlockedGemOrder.length;
-    const isBrandNew = GEMS.some((g) => !this.data.unlockedGems[g.id]);
-    let chosen = GEMS.find((g) => !this.data.unlockedGems[g.id]);
-    if (!chosen) {
-      chosen = GEMS[totalCrafted % GEMS.length];
-    }
+    // GameManager.UnlockNewGem: AllGems.Where(g => world.allowedRarities.Contains(g.gemRarity))
+    // (fallback: all gems) -> list[new System.Random().Next(count)]; duplicates allowed
+    const curWorld = this.getActivePlanetWorld();
+    const allowed = Array.isArray(curWorld.allowedRarities) ? curWorld.allowedRarities : null;
+    let gemPool = allowed ? GEMS.filter((g) => allowed.includes(g.rarity)) : GEMS.slice();
+    if (gemPool.length === 0) gemPool = GEMS.slice();
+    const chosen = gemPool[Math.floor(Math.random() * gemPool.length)];
+    const isBrandNew = !this.data.unlockedGems[chosen.id];
 
     this.data.unlockedGems[chosen.id] = (this.data.unlockedGems[chosen.id] || 0) + 1;
     if (!this.data.unlockedGemOrder.includes(chosen.id)) {
@@ -5677,8 +5801,8 @@ class StorageService {
     }
 
     const rarityDef = RARITIES[chosen.rarity] || RARITIES[0];
-    const coinBonus = rarityDef.coins || 30;
-    this.data.coins = (this.data.coins || 0) + coinBonus;
+    // UnlockNewGem never touches Coins
+    const coinBonus = 0;
 
     const world = this.getActivePlanetWorld();
     const totalSegs = (world.gemValues || [1800, 10000, 14000]).length;
@@ -5822,7 +5946,9 @@ class StorageService {
     if (!this.data.pendingPlanetAdvance) return false;
     this.data.pendingPlanetAdvance = false;
     if (this.data.planetWorldIndex < WORLDS.length) {
+      // GameManager.UnlockNewWorld: WorldIndex++, LevelIndex = 0
       this.data.planetWorldIndex += 1;
+      this.data.worldLevelIndex = 0;
       this.data.planetGemsCleared = 0;
       this.data.planetCleanHits = [];
     }
@@ -5852,9 +5978,9 @@ class StorageService {
       this.data.dailyLastFullDate = t;
       this.data.dailyGrandClaimedDate = t;
       this.data.coins = (this.data.coins || 0) + 180;
-      this.data.rainbowBalls = (this.data.rainbowBalls || 0) + 1;
-      this.data.bombBalls = (this.data.bombBalls || 0) + 1;
-      this.data.propellerBalls = (this.data.propellerBalls || 0) + 1;
+      this.addSpecialBall('rainbow', 1);
+      this.addSpecialBall('bomb', 1);
+      this.addSpecialBall('propeller', 1);
       grandReward = {
         coins: 180,
         rainbow: 1,
@@ -5877,9 +6003,9 @@ class StorageService {
     }
     this.data.redeemedCodes.push(code);
     this.data.coins = (this.data.coins || 0) + (def.coins || 0);
-    this.data.rainbowBalls = (this.data.rainbowBalls || 0) + (def.rainbow || 0);
-    this.data.bombBalls = (this.data.bombBalls || 0) + (def.bomb || 0);
-    this.data.propellerBalls = (this.data.propellerBalls || 0) + (def.propeller || 0);
+    if (def.rainbow) this.addSpecialBall('rainbow', def.rainbow);
+    if (def.bomb) this.addSpecialBall('bomb', def.bomb);
+    if (def.propeller) this.addSpecialBall('propeller', def.propeller);
     if (def.duck) this.unlockDuck(def.duck);
     this.save();
     return { ok: true, msg: `兑换成功：${def.label}`, reward: def };
@@ -5899,10 +6025,11 @@ class StorageService {
 
   getBoosterUnlockState() {
     const maxLvl = this.data.maxUnlockedLevel || 1;
+    const ub = Array.isArray(this.data.unlockedBoosters) ? this.data.unlockedBoosters : [];
     return {
-      rainbowUnlocked: maxLvl >= RAINBOW_UNLOCK_GLOBAL || (this.data.rainbowBalls || 0) > 3,
-      bombUnlocked: maxLvl >= BOMB_UNLOCK_GLOBAL || (this.data.bombBalls || 0) > 2,
-      propellerUnlocked: maxLvl >= PROPELLER_UNLOCK_GLOBAL || (this.data.propellerBalls || 0) > 2,
+      rainbowUnlocked: maxLvl >= RAINBOW_UNLOCK_GLOBAL || ub.includes('rainbow') || (this.data.rainbowBalls || 0) > 3,
+      bombUnlocked: maxLvl >= BOMB_UNLOCK_GLOBAL || ub.includes('bomb') || (this.data.bombBalls || 0) > 2,
+      propellerUnlocked: maxLvl >= PROPELLER_UNLOCK_GLOBAL || ub.includes('propeller') || (this.data.propellerBalls || 0) > 2,
       doubleSwitchUnlocked: maxLvl >= DOUBLE_SWITCH_UNLOCK_GLOBAL
     };
   }
@@ -6320,6 +6447,8 @@ const {
 
 const COLOR_BOMB_COLOR = { id: 'colorbomb', rgb: [0.35, 0.96, 1.0], hex: '#59f5ff' };
 const SHIELD_COS_HALF = Math.cos(0.31);
+// ColorZone.ComputeIsPoleZone(20f): cos(20 deg) = 0.9396926207859084
+const POLE_COS_20_DEG = Math.cos((20.0 * Math.PI) / 180.0);
 
 function quatFromZToDir(dir) {
   const d = norm3(dir);
@@ -6422,72 +6551,118 @@ class PearlSphere {
     this.updateWorldPositions();
   }
 
-  _assignPatternColor(pt, radius, colors, patternType, seedsList, polkaDots) {
+  /**
+   * SphereLayer.BuildIcosahedron + SphereLayer.GenerateHexGridSeeds:
+   * Subdivides the 20 faces of a regular icosahedron by N = Random.Range(2, 5) (2..4),
+   * projects vertices onto the sphere, deduplicates via quantized (int)(v*10000) keys,
+   * and assigns palette colors to form a geodesic honeycomb pattern for PatternType 9 (GridLike).
+   */
+  _generateIcosahedronHexGridSeeds(radius, colors, rng) {
+    const phi = (1.0 + Math.sqrt(5.0)) * 0.5;
+    const rawVerts = [
+      [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
+      [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
+      [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1]
+    ].map(([x, y, z]) => norm3({ x, y, z }));
+
+    const faces = [
+      [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+      [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+      [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+      [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
+    ];
+
+    const subdiv = 2 + Math.floor(rng() * 3); // Random.Range(2, 5) -> 2, 3, or 4
+    const uniqueMap = new Map();
+    const seeds = [];
+
+    for (let f = 0; f < faces.length; f++) {
+      const [ia, ib, ic] = faces[f];
+      const v0 = rawVerts[ia];
+      const v1 = rawVerts[ib];
+      const v2 = rawVerts[ic];
+      for (let i = 0; i <= subdiv; i++) {
+        for (let j = 0; j <= subdiv - i; j++) {
+          const k = subdiv - i - j;
+          const u = norm3({
+            x: (i * v0.x + j * v1.x + k * v2.x) / subdiv,
+            y: (i * v0.y + j * v1.y + k * v2.y) / subdiv,
+            z: (i * v0.z + j * v1.z + k * v2.z) / subdiv
+          });
+          const qKey = `${Math.round(u.x * 10000)},${Math.round(u.y * 10000)},${Math.round(u.z * 10000)}`;
+          if (!uniqueMap.has(qKey)) {
+            uniqueMap.set(qKey, true);
+            seeds.push({
+              pos: { x: u.x * radius, y: u.y * radius, z: u.z * radius },
+              color: colors[Math.floor(rng() * colors.length) % colors.length]
+            });
+          }
+        }
+      }
+    }
+    return seeds;
+  }
+
+  /**
+   * SphereLayer.Generate: every bubble first receives its nearest-seed (Voronoi) colour
+   * (GenerateColorSeeds + DistributeBubbles + GetColorFromClosestSeed), then the
+   * patternType switch overrides it with ONLY one of 4 assigners that exist in the original:
+   * AssignSpiralPatternColors / AssignStripePatternColors / AssignPolkaDotPatternColors /
+   * AssignPerlinWorldPatternColors. GridLike (9) uses GenerateHexGridSeeds as Voronoi seeds.
+   * Any other enum value falls back to plain Voronoi.
+   */
+  _assignPatternColor(pt, radius, colors, patternType, ctx, index) {
     const nColors = colors.length;
     const nx = pt.x / radius;
     const ny = pt.y / radius;
     const nz = pt.z / radius;
-    const lon = Math.atan2(nz, nx);
-    const lat = Math.asin(Math.max(-1, Math.min(1, ny)));
 
     switch (patternType) {
       case 1: {
-        const v = (lon / (Math.PI * 2)) * nColors * 2.0 + ny * 1.65 + 10.0;
-        return colors[Math.floor(v) % nColors];
+        // AssignSpiralPatternColors: 2 shuffled colours alternating over Fibonacci creation order
+        const sc = ctx.spiralColors;
+        return (index & 1) ? sc[1] : sc[0];
       }
       case 2: {
-        const band = Math.floor(((ny + 1.0) * 0.5) * (nColors * 2.5));
-        return colors[Math.abs(band) % nColors];
-      }
-      case 3: {
-        const ring = Math.floor(Math.acos(Math.max(-1, Math.min(1, -nz))) * 2.8);
-        const sec = Math.floor(((Math.atan2(ny, nx) + Math.PI) / (Math.PI * 2)) * 6);
-        return colors[Math.abs(ring + sec) % nColors];
-      }
-      case 4: {
-        const uCell = Math.floor(((lon + Math.PI) / (Math.PI * 2)) * 8);
-        const vCell = Math.floor(((lat + Math.PI * 0.5) / Math.PI) * 5);
-        return colors[Math.abs(uCell + vCell) % nColors];
-      }
-      case 5: {
-        const idx = Math.min(nColors - 1, Math.max(0, Math.floor(((ny + 1.0) * 0.5) * nColors)));
-        return colors[idx];
-      }
-      case 6: {
-        const slice = Math.floor(((lon + Math.PI) / (Math.PI * 2)) * (nColors * 2));
-        return colors[Math.abs(slice) % nColors];
-      }
-      case 7: {
-        const w = ny * 3.2 + 0.34 * Math.sin(lon * 3.0) + 10.0;
-        return colors[Math.floor(w) % nColors];
+        // AssignStripePatternColors: n = Random.Range(2, colors.Count) shuffled colours,
+        // index = floor(freq * (y + R + wobble) / (2R)) mod n
+        const st = ctx.stripe;
+        const wobble = Math.sin(Math.atan2(nz, nx) * st.wobbleFreq) * st.wobbleAmp * radius;
+        const v = Math.floor((st.freq * (pt.y + radius + wobble)) / (2 * radius));
+        return st.palette[((v % st.palette.length) + st.palette.length) % st.palette.length];
       }
       case 8: {
-        for (let i = 0; i < polkaDots.length; i++) {
-          const pd = polkaDots[i];
-          const d = nx * pd.x + ny * pd.y + nz * pd.z;
-          if (d > 0.91) return pd.color;
+        // AssignPolkaDotPatternColors: chord-distance test against randomly rotated Fibonacci dot centres
+        const pd = ctx.polka;
+        for (let i = 0; i < pd.dots.length; i++) {
+          const d = pd.dots[i];
+          const dx = nx - d.x, dy = ny - d.y, dz = nz - d.z;
+          if (dx * dx + dy * dy + dz * dz <= pd.chordSq) return d.color;
         }
-        return colors[0];
-      }
-      case 9: {
-        const gx = Math.floor((nx + 1.2) * 2.6);
-        const gy = Math.floor((ny + 1.2) * 2.6);
-        return colors[Math.abs(gx * 3 + gy) % nColors];
+        return pd.bg;
       }
       case 10: {
-        const nv = (pseudoNoise3(nx * 2.1, ny * 2.1, nz * 2.1) + 1.0) * 0.5;
-        return colors[Math.min(nColors - 1, Math.floor(nv * nColors * 1.4) % nColors)];
+        // AssignPerlinWorldPatternColors: idx = clamp(floor(noise * Count), 0, Count - 1)
+        const pr = ctx.perlin;
+        const n1 = (pseudoNoise3(pr.ox + nx * 2.5, pr.oy + ny * 2.5, 0.37) + 1.0) * 0.5;
+        const n2 = (pseudoNoise3(pr.ox2 + nx * 2.5, pr.oy2 + nz * 2.5, 0.71) + 1.0) * 0.5;
+        const nv = (n1 + n2) * 0.5;
+        return colors[Math.min(nColors - 1, Math.max(0, Math.floor(nv * nColors)))];
       }
+      case 9:
       case 0:
       default: {
-        let best = seedsList[0];
-        let bestDist = Infinity;
-        const wobble = pseudoNoise3(nx, ny, nz) * 0.14 * radius;
-        for (let i = 0; i < seedsList.length; i++) {
-          const d = dist3(pt, seedsList[i].pos) + (i % 2 === 0 ? wobble : -wobble);
-          if (d < bestDist) {
-            bestDist = d;
-            best = seedsList[i];
+        // GetColorFromClosestSeed: plain nearest Euclidean seed, no noise
+        const seeds = patternType === 9 && ctx.hexGridSeeds && ctx.hexGridSeeds.length > 0
+          ? ctx.hexGridSeeds
+          : ctx.seedsList;
+        let best = seeds[0];
+        let bestDistSq = Infinity;
+        for (let i = 0; i < seeds.length; i++) {
+          const dSq = distSq3(pt, seeds[i].pos);
+          if (dSq < bestDistSq) {
+            bestDistSq = dSq;
+            best = seeds[i];
           }
         }
         return best.color;
@@ -6609,9 +6784,11 @@ class PearlSphere {
         pearls: run,
         centerPearl,
         isPole: false,
+        isPoleZone: false,
         hasRock: false,
         targetedByPropeller: false,
-        ionized: 0
+        ionized: 0,
+        innerLayerNeighborZones: new Set()
       };
       for (let k = 0; k < run.length; k++) run[k].colorZone = cz;
       zones.push(cz);
@@ -6640,9 +6817,26 @@ class PearlSphere {
 
   _buildLayers(rng) {
     let idCounter = 1;
-    let zoneIdCounter = 1;
+    this._zoneIdCounter = 1;
     const layers = this.descriptor.layers;
     const colors = this.colors;
+    const patternType = this.descriptor.patternType;
+
+    const shuffled = (arr) => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a;
+    };
+    // Random.onUnitSphere
+    const randUnit = () => {
+      const u = rng() * 2 - 1;
+      const th = rng() * Math.PI * 2;
+      const rs = Math.sqrt(Math.max(0, 1 - u * u));
+      return { x: Math.cos(th) * rs, y: u, z: Math.sin(th) * rs };
+    };
 
     for (let lIdx = 0; lIdx < layers.length; lIdx++) {
       const lDef = layers[lIdx];
@@ -6651,37 +6845,65 @@ class PearlSphere {
 
       const pearlRadius = Math.max(0.495, (1.98 * radius) / Math.sqrt(count));
 
-      const seedCount = Math.max(colors.length, lDef.seeds || 8);
+      // SphereLayer.GenerateColorSeeds: numberOfSeeds x (Random.onUnitSphere * radius, colors[Random.Range(0, Count)])
+      const seedCount = Math.max(1, lDef.seeds || 8);
       const seedsList = [];
-      const minSeedDist = (radius * 1.45) / Math.sqrt(seedCount);
       for (let s = 0; s < seedCount; s++) {
-        let bestPt = null;
-        for (let att = 0; att < 40; att++) {
-          const u = rng() * 2 - 1;
-          const th = rng() * Math.PI * 2;
-          const rs = Math.sqrt(Math.max(0, 1 - u * u));
-          const cand = { x: Math.cos(th) * rs * radius, y: u * radius, z: Math.sin(th) * rs * radius };
-          bestPt = cand;
-          if (seedsList.every((ex) => dist3(cand, ex.pos) >= minSeedDist)) break;
-        }
-        seedsList.push({ pos: bestPt, color: colors[s % colors.length] });
+        const d = randUnit();
+        seedsList.push({
+          pos: { x: d.x * radius, y: d.y * radius, z: d.z * radius },
+          color: colors[Math.floor(rng() * colors.length) % colors.length]
+        });
       }
 
-      const polkaDots = [];
-      if (this.descriptor.patternType === 8) {
-        const dotPts = generateFibonacciSphere(18, 1.0, lIdx * 0.7);
-        for (let d = 0; d < dotPts.length; d++) {
-          polkaDots.push({
-            x: dotPts[d].x,
-            y: dotPts[d].y,
-            z: dotPts[d].z,
-            color: colors[1 + (d % Math.max(1, colors.length - 1))]
-          });
-        }
+      const ctx = {
+        seedsList,
+        hexGridSeeds: patternType === 9 ? this._generateIcosahedronHexGridSeeds(radius, colors, rng) : null
+      };
+      if (patternType === 1) {
+        // AssignSpiralPatternColors: colors.OrderBy(Random.value).Take(2)
+        const sh = shuffled(colors);
+        ctx.spiralColors = [sh[0], sh[1] || sh[0]];
+      } else if (patternType === 2) {
+        // AssignStripePatternColors: n = Random.Range(2, colors.Count) (int, exclusive upper)
+        const n = colors.length <= 2 ? colors.length : 2 + Math.floor(rng() * (colors.length - 2));
+        ctx.stripe = {
+          palette: shuffled(colors).slice(0, Math.max(1, n)),
+          // Stripe frequency/wobble constants live in .rodata (unreadable); radius-scaled approximation
+          freq: 3 + rng() * Math.max(1, radius),
+          wobbleFreq: 2 + Math.floor(rng() * 3),
+          wobbleAmp: 0.04 + rng() * 0.08
+        };
+      } else if (patternType === 8) {
+        // AssignPolkaDotPatternColors: Fibonacci dot centres rotated by Random.rotation,
+        // bg = colors[Random.Range(0, Count)], each dot = random colour other than bg
+        const dotCount = 8 + Math.floor(rng() * 13);
+        const axis = randUnit();
+        const q = quatFromAxisAngle(axis, rng() * Math.PI * 2);
+        const bg = colors[Math.floor(rng() * colors.length) % colors.length];
+        const others = colors.filter((c) => c.id !== bg.id);
+        const dots = generateFibonacciSphere(dotCount, 1.0, 0).map((p) => {
+          const r = rotateVecByQuat(p, q);
+          return {
+            x: r.x, y: r.y, z: r.z,
+            color: others.length > 0 ? others[Math.floor(rng() * others.length) % others.length] : bg
+          };
+        });
+        ctx.polka = { dots, bg, chordSq: 0.18 };
+      } else if (patternType === 10) {
+        ctx.perlin = { ox: rng() * 100, oy: rng() * 100, ox2: rng() * 100, oy2: rng() * 100 };
       }
 
-      const localPts = generateFibonacciSphere(count, radius, lIdx * 1.29);
-      this._relaxPointsOnShell(localPts, radius, pearlRadius);
+      // SphereLayer.DistributeBubbles: Fibonacci lattice y = 1 - 2i/(N-1) (poles included),
+      // theta = i * goldenAngle, no per-layer offset and no relaxation pass
+      const localPts = new Array(count);
+      const golden = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < count; i++) {
+        const y = count > 1 ? 1 - (2 * i) / (count - 1) : 0;
+        const rs = Math.sqrt(Math.max(0, 1 - y * y));
+        const th = golden * i;
+        localPts[i] = { x: Math.cos(th) * rs * radius, y: y * radius, z: Math.sin(th) * rs * radius };
+      }
 
       let colorBombIdx = -1;
       if (lIdx === 0 && this.descriptor.hasColorBomb) {
@@ -6698,14 +6920,7 @@ class PearlSphere {
       for (let i = 0; i < localPts.length; i++) {
         const lp = localPts[i];
         const unitDir = norm3(lp);
-        const trueColor = this._assignPatternColor(
-          lp,
-          radius,
-          colors,
-          this.descriptor.patternType,
-          seedsList,
-          polkaDots
-        );
+        const trueColor = this._assignPatternColor(lp, radius, colors, patternType, ctx, i);
 
         const isColorBomb = i === colorBombIdx;
         const assignedColor = isColorBomb ? COLOR_BOMB_COLOR : trueColor;
@@ -6757,7 +6972,8 @@ class PearlSphere {
       }
       this.layerPearls.push(shellList);
 
-      // Build explicit ColorZones (connected same-color components on this shell)
+      // SphereLayer.AssignAndCombine: BuildGrid + GetNeighborsSpatial flood fill of same-colour
+      // bubbles into ColorZones (no recolouring of isolated bubbles)
       const seen = new Set();
       const shellZones = [];
       for (let i = 0; i < shellList.length; i++) {
@@ -6765,13 +6981,9 @@ class PearlSphere {
         if (start.isColorBomb || seen.has(start.id)) continue;
         const comp = [start];
         seen.add(start.id);
-        let sx = 0, sy = 0, sz = 0;
         let head = 0;
         while (head < comp.length) {
           const cur = comp[head++];
-          sx += cur.localPos.x;
-          sy += cur.localPos.y;
-          sz += cur.localPos.z;
           for (let k = 0; k < cur.neighbors.length; k++) {
             const nb = cur.neighbors[k];
             if (!nb.isColorBomb && !seen.has(nb.id) && nb.color.id === start.color.id) {
@@ -6780,124 +6992,31 @@ class PearlSphere {
             }
           }
         }
-        const avg = { x: sx / comp.length, y: sy / comp.length, z: sz / comp.length };
-        let centerPearl = comp[0];
-        let bestD = Infinity;
-        for (let k = 0; k < comp.length; k++) {
-          const d = distSq3(comp[k].localPos, avg);
-          if (d < bestD) {
-            bestD = d;
-            centerPearl = comp[k];
-          }
-        }
-        const cz = {
-          id: zoneIdCounter++,
-          layer: lIdx,
-          color: start.color,
-          pearls: comp,
-          centerPearl,
-          isPole: Math.abs(centerPearl.localDir.y) > 0.80,
-          hasRock: false,
-          targetedByPropeller: false,
-          ionized: 0
-        };
-        for (let k = 0; k < comp.length; k++) {
-          comp[k].colorZone = cz;
-        }
+        const cz = this._createColorZoneObject(lIdx, start.color, comp, radius);
         shellZones.push(cz);
         this.colorZones.push(cz);
       }
       this.layerColorZones.push(shellZones);
 
-      // Outer shell modifiers: Two-stage BubbleRock, Per-Zone Propeller, BonusLevelCoin
+      // BonusLevelCoin (levelType === 1: embedded golden coins on outer ColorZones)
       if (lIdx === 0) {
-        // 1. Two-stage BubbleRock (ColorZone.CoverWithRock): preserves true p.color underneath!
-        if (this.descriptor.rockChance > 0) {
-          const candidates = shellZones.filter((cz) => !cz.isPole && cz.pearls.length >= 2 && cz.pearls.length <= 42);
-          let rockedCount = 0;
-          const maxRockedPearls = Math.floor(shellList.length * 0.34);
-          let rockedPearlsTotal = 0;
-          for (let c = 0; c < candidates.length; c++) {
-            const cz = candidates[c];
-            if (rockedPearlsTotal + cz.pearls.length > maxRockedPearls) continue;
-            if (rng() < this.descriptor.rockChance) {
-              this._coverZoneWithRock(cz);
-              rockedCount++;
-              rockedPearlsTotal += cz.pearls.length;
-            }
-          }
-          if (rockedCount === 0 && candidates.length > 0) {
-            const front = candidates
-              .slice()
-              .sort((a, b) => a.centerPearl.localDir.z - b.centerPearl.localDir.z);
-            const take = Math.min(2, front.length);
-            for (let t = 0; t < take; t++) {
-              this._coverZoneWithRock(front[t]);
-              rockedCount++;
-            }
-          }
-          // When continents are massive (e.g. Level_4-1_BubbleRock_Tutorial with minS: 3, maxS: 5 -> ~140 pearls/zone),
-          // cover 2..3 cohesive 14-pearl stone patches on the camera-facing hemisphere while keeping surrounding continent matchable!
-          if (rockedCount === 0 && shellList.length > 0) {
-            const frontSeeds = shellList
-              .filter((p) => !p.isColorBomb && Math.abs(p.localDir.y) < 0.68 && p.localDir.z < -0.25)
-              .sort((a, b) => a.localDir.z - b.localDir.z);
-            let patches = 0;
-            const targetPatches = Math.max(2, Math.round(this.descriptor.rockChance * 8));
-            for (let s = 0; s < frontSeeds.length && patches < targetPatches; s++) {
-              const seed = frontSeeds[s];
-              if (seed.hasRock) continue;
-              // Ensure patches are well separated on the sphere
-              const tooClose = shellList.some(
-                (rp) => rp.hasRock && dot3(rp.localDir, seed.localDir) > 0.78
-              );
-              if (tooClose) continue;
-              this._coverSubClusterWithRock(seed, 14);
-              patches++;
-            }
-          }
-        }
-
-        // 2. Per-ColorZone Propeller (ColorZone.AddPropeller)
-        if (this.descriptor.propellerChance > 0) {
-          const propCandidates = shellZones.filter((cz) => !cz.hasRock && cz.pearls.length >= 2);
-          let propAdded = 0;
-          for (let c = 0; c < propCandidates.length; c++) {
-            if (rng() < this.descriptor.propellerChance && !propCandidates[c].centerPearl.hasRock) {
-              propCandidates[c].centerPearl.isPropeller = true;
-              propAdded++;
-            }
-          }
-          if (propAdded < 2 && propCandidates.length > 0) {
-            const front = propCandidates
-              .filter((cz) => !cz.centerPearl.isPropeller && !cz.centerPearl.hasRock)
-              .sort((a, b) => a.centerPearl.localDir.z - b.centerPearl.localDir.z);
-            for (let t = 0; t < front.length && propAdded < 2; t++) {
-              front[t].centerPearl.isPropeller = true;
-              propAdded++;
-            }
-          }
-        }
-
-        // 3. BonusLevelCoin (levelType === 1: 10 embedded golden coins on outer ColorZones)
         const wantCoins = this.descriptor.bonusCoinsCount || 0;
         if (wantCoins > 0) {
           const coinZones = shellZones
-            .filter((cz) => !cz.hasRock && !cz.centerPearl.isColorBomb)
+            .filter((cz) => !cz.centerPearl.isColorBomb)
             .sort((a, b) => b.pearls.length - a.pearls.length);
           const placedIds = new Set();
           for (let c = 0; c < coinZones.length && this.totalBonusCoins < wantCoins; c++) {
             const cp = coinZones[c].centerPearl;
-            if (!placedIds.has(cp.id) && !cp.hasRock) {
+            if (!placedIds.has(cp.id)) {
               cp.isBonusCoin = true;
               placedIds.add(cp.id);
               this.totalBonusCoins++;
             }
           }
-          // Top up on well-spaced pearls if shell had fewer than 10 zones
           for (let i = 0; i < shellList.length && this.totalBonusCoins < wantCoins; i += 7) {
             const p = shellList[i];
-            if (!p.hasRock && !p.isColorBomb && !p.isBonusCoin) {
+            if (!p.isColorBomb && !p.isBonusCoin) {
               p.isBonusCoin = true;
               this.totalBonusCoins++;
             }
@@ -6906,7 +7025,134 @@ class PearlSphere {
       }
     }
 
+    // Level.Build rocks: candidates = ColorZones of layers passing the radius-vs-7 test,
+    // count = round(rockChance * candidates.Count), distinct uniform random picks, CoverWithRock (whole zone)
+    if (this.descriptor.rockChance > 0) {
+      const candidates = [];
+      for (let l = 0; l < this.layerColorZones.length; l++) {
+        const lr = (layers[l] && layers[l].radius) || 0;
+        if (lr > 7) continue;
+        const zs = this.layerColorZones[l];
+        for (let z = 0; z < zs.length; z++) {
+          if (!zs[z].centerPearl.isBonusCoin) candidates.push(zs[z]);
+        }
+      }
+      let want = Math.round(this.descriptor.rockChance * candidates.length);
+      while (want > 0 && candidates.length > 0) {
+        const idx = Math.floor(rng() * candidates.length);
+        this._coverZoneWithRock(candidates[idx]);
+        candidates.splice(idx, 1);
+        want--;
+      }
+    }
+
+    // Level.Start propellers: for EVERY layer & zone, Random.value < propellerChance -> ColorZone.AddPropeller()
+    // (AddPropeller rejects zones whose centre bubble sits near the poles)
+    if (this.descriptor.propellerChance > 0) {
+      for (let l = 0; l < this.layerColorZones.length; l++) {
+        const zs = this.layerColorZones[l];
+        for (let z = 0; z < zs.length; z++) {
+          const cz = zs[z];
+          if (rng() >= this.descriptor.propellerChance) continue;
+          const cp = cz.centerPearl;
+          if (!cp || cz.hasRock || cz.isPoleZone || Math.abs(cp.localDir.y) > 0.9) continue;
+          cp.isPropeller = true;
+        }
+      }
+    }
+
+    this._buildInnerLayerNeighborZones();
     this.totalPearls = this.pearls.length;
+  }
+
+  /**
+   * Construct a ColorZone and compute exact ColorZone.ComputeIsPoleZone(20f):
+   * isPoleZone is true iff ALL pearls in the zone lie within 20 degrees of North or South pole
+   * (|localPos.y / layerRadius| >= cos(20 deg) = 0.93969262).
+   */
+  _createColorZoneObject(layerIdx, color, comp, layerRadius) {
+    let sx = 0, sy = 0, sz = 0;
+    let allInNorthPole = comp.length > 0;
+    let allInSouthPole = comp.length > 0;
+    const invR = 1.0 / (layerRadius || 1.0);
+
+    for (let k = 0; k < comp.length; k++) {
+      const p = comp[k];
+      sx += p.localPos.x;
+      sy += p.localPos.y;
+      sz += p.localPos.z;
+      const ny = p.localPos.y * invR;
+      if (ny < POLE_COS_20_DEG) allInNorthPole = false;
+      if (ny > -POLE_COS_20_DEG) allInSouthPole = false;
+    }
+
+    const avg = { x: sx / comp.length, y: sy / comp.length, z: sz / comp.length };
+    let centerPearl = comp[0];
+    let bestD = Infinity;
+    for (let k = 0; k < comp.length; k++) {
+      const d = distSq3(comp[k].localPos, avg);
+      if (d < bestD) {
+        bestD = d;
+        centerPearl = comp[k];
+      }
+    }
+    const isPoleZone = allInNorthPole || allInSouthPole;
+    const cz = {
+      id: this._zoneIdCounter++,
+      layer: layerIdx,
+      color,
+      pearls: comp,
+      centerPearl,
+      isPole: isPoleZone,
+      isPoleZone,
+      hasRock: false,
+      targetedByPropeller: false,
+      ionized: 0,
+      innerLayerNeighborZones: new Set()
+    };
+    for (let k = 0; k < comp.length; k++) {
+      comp[k].colorZone = cz;
+    }
+    return cz;
+  }
+
+  /**
+   * ColorZone.FindInnerLayerNeighborZones(innerLayer, 1.0f):
+   * Projects each pearl of an outer ColorZone (layer l) radially onto innerLayer (layer l + 1)
+   * and links overlapping inner ColorZones into cz.innerLayerNeighborZones.
+   */
+  _buildInnerLayerNeighborZones() {
+    if (this.isSnakeLevel || this.layerColorZones.length < 2) return;
+    for (let l = 0; l < this.layerColorZones.length - 1; l++) {
+      const outerZones = this.layerColorZones[l] || [];
+      const innerPearls = this.layerPearls[l + 1] || [];
+      const innerDef = this.descriptor.layers[l + 1];
+      const innerRadius = (innerDef && innerDef.radius) || 4.0;
+
+      for (let z = 0; z < outerZones.length; z++) {
+        const cz = outerZones[z];
+        cz.innerLayerNeighborZones = new Set();
+        const boost = cz.pearls.length < 4 ? 1.5 : 1.0;
+        const baseThresh = 1.05 * boost;
+        const threshSq = baseThresh * baseThresh;
+
+        for (let pIdx = 0; pIdx < cz.pearls.length; pIdx++) {
+          const op = cz.pearls[pIdx];
+          const proj = {
+            x: op.localDir.x * innerRadius,
+            y: op.localDir.y * innerRadius,
+            z: op.localDir.z * innerRadius
+          };
+          for (let j = 0; j < innerPearls.length; j++) {
+            const ip = innerPearls[j];
+            if (!ip.colorZone) continue;
+            if (distSq3(proj, ip.localPos) <= threshSq) {
+              cz.innerLayerNeighborZones.add(ip.colorZone);
+            }
+          }
+        }
+      }
+    }
   }
 
   _coverZoneWithRock(cz) {
@@ -6914,60 +7160,6 @@ class PearlSphere {
     for (let i = 0; i < cz.pearls.length; i++) {
       cz.pearls[i].hasRock = true;
       cz.pearls[i].isRock = true;
-    }
-  }
-
-  _coverSubClusterWithRock(seedPearl, maxCount = 14) {
-    const queue = [seedPearl];
-    const visited = new Set([seedPearl.id]);
-    let head = 0;
-    while (head < queue.length && queue.length < maxCount) {
-      const cur = queue[head++];
-      for (let i = 0; i < cur.neighbors.length && queue.length < maxCount; i++) {
-        const nb = cur.neighbors[i];
-        if (!visited.has(nb.id) && !nb.isColorBomb && nb.color.id === seedPearl.color.id) {
-          visited.add(nb.id);
-          queue.push(nb);
-        }
-      }
-    }
-    for (let i = 0; i < queue.length; i++) {
-      queue[i].hasRock = true;
-      queue[i].isRock = true;
-    }
-  }
-
-  _relaxPointsOnShell(pts, radius, pearlRadius) {
-    const minDist = pearlRadius * 1.94;
-    const minDistSq = minDist * minDist;
-    const n = pts.length;
-    const win = Math.ceil(((minDist + 0.55) * n) / (2 * radius)) + 8;
-    const iters = n > 450 ? 3 : 4;
-    for (let iter = 0; iter < iters; iter++) {
-      for (let i = 0; i < n; i++) {
-        const pi = pts[i];
-        let fx = 0, fy = 0, fz = 0;
-        const jStart = Math.max(0, i - win);
-        const jEnd = Math.min(n, i + win);
-        for (let j = jStart; j < jEnd; j++) {
-          if (i === j) continue;
-          const pj = pts[j];
-          const dx = pi.x - pj.x, dy = pi.y - pj.y, dz = pi.z - pj.z;
-          const dSq = dx * dx + dy * dy + dz * dz;
-          if (dSq > 1e-6 && dSq < minDistSq) {
-            const d = Math.sqrt(dSq);
-            const push = (minDist - d) * 0.24 / d;
-            fx += dx * push;
-            fy += dy * push;
-            fz += dz * push;
-          }
-        }
-        const nx = pi.x + fx, ny = pi.y + fy, nz = pi.z + fz;
-        const inv = radius / (Math.sqrt(nx * nx + ny * ny + nz * nz) || 1);
-        pi.x = nx * inv;
-        pi.y = ny * inv;
-        pi.z = nz * inv;
-      }
     }
   }
 
@@ -7314,6 +7506,161 @@ class PearlSphere {
   }
 
   /**
+   * Level.CalculateMinimumNumberOfBallsNeededToFinish():
+   * Iterates across all SphereLayers and counts the total number of unexploded ColorZones.
+   */
+  calculateMinimumBallsNeededToFinish() {
+    if (this.isSnakeLevel) this._rebuildSnakeZones();
+    let count = 0;
+    for (let l = this.layerColorZones.length - 1; l >= 0; l--) {
+      const zones = this.layerColorZones[l] || [];
+      for (let i = 0; i < zones.length; i++) {
+        const cz = zones[i];
+        if (cz.pearls.some((p) => p.alive && !p.isColorBomb)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  countAliveColorBombZones() {
+    let c = 0;
+    for (let i = 0; i < this.pearls.length; i++) {
+      if (this.pearls[i].alive && this.pearls[i].isColorBomb) c++;
+    }
+    return c;
+  }
+
+  /**
+   * BallShooter.ReplaceSecondaryBallIfColorNotExisting():
+   * Checks whether colorId still exists on any unexploded non-rock ColorZone across the sphere.
+   */
+  isColorAliveOnSphere(colorId) {
+    if (!colorId) return false;
+    if (this.isSnakeLevel) {
+      return this.pearls.some((p) => p.alive && p.color && p.color.id === colorId);
+    }
+    for (let i = 0; i < this.colorZones.length; i++) {
+      const cz = this.colorZones[i];
+      if (cz.hasRock || !cz.color || cz.color.id !== colorId) continue;
+      if (cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb)) {
+        return true;
+      }
+    }
+    return this.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb && p.color && p.color.id === colorId);
+  }
+
+  /**
+   * SphereLayer.ColorOnlyOnPolesInLayer(color):
+   * Returns true iff in layerIdx there is >= 1 unexploded non-rock ColorZone of colorId
+   * AND every unexploded non-rock ColorZone of colorId in layerIdx has isPoleZone === true.
+   */
+  colorOnlyOnPolesInLayer(layerIdx, colorId) {
+    if (this.isSnakeLevel || layerIdx < 0 || layerIdx >= this.layerColorZones.length) return false;
+    const zones = this.layerColorZones[layerIdx] || [];
+    let foundAny = false;
+    for (let i = 0; i < zones.length; i++) {
+      const cz = zones[i];
+      if (cz.hasRock || !cz.color || cz.color.id !== colorId) continue;
+      if (!cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb)) continue;
+      foundAny = true;
+      if (!cz.isPoleZone) return false;
+    }
+    return foundAny;
+  }
+
+  /**
+   * SphereLayer.TryGetNonPoleColorInLayer(excludeColor, skipColors):
+   * Picks a non-pole, non-rock unexploded ColorZone color from layerIdx.
+   */
+  tryGetNonPoleColorInLayer(layerIdx, excludeColorId = null, skipColorIds = null, rngFn = Math.random) {
+    if (this.isSnakeLevel || layerIdx < 0 || layerIdx >= this.layerColorZones.length) return null;
+    const zones = this.layerColorZones[layerIdx] || [];
+    const candidates = [];
+    for (let i = 0; i < zones.length; i++) {
+      const cz = zones[i];
+      if (cz.hasRock || cz.isPoleZone || !cz.color) continue;
+      if (excludeColorId && cz.color.id === excludeColorId) continue;
+      if (skipColorIds && skipColorIds.has(cz.color.id)) continue;
+      if (!cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb)) continue;
+      candidates.push(cz.color);
+    }
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(rngFn() * candidates.length)];
+  }
+
+  /**
+   * SphereLayer.AdjustColorForPoleBias(layer, originalColor, skipColors):
+   * If originalColor only exists on polar caps in layerIdx, substitutes a non-pole color
+   * from layerIdx (or falls back to next inner layer layerIdx + 1).
+   */
+  adjustColorForPoleBias(layerIdx, originalColor, skipColorIds = null, rngFn = Math.random) {
+    if (!originalColor || this.isSnakeLevel) return originalColor;
+    if (!this.colorOnlyOnPolesInLayer(layerIdx, originalColor.id)) {
+      return originalColor;
+    }
+    const sameLayerRep = this.tryGetNonPoleColorInLayer(layerIdx, originalColor.id, skipColorIds, rngFn);
+    if (sameLayerRep) return sameLayerRep;
+    if (layerIdx + 1 < this.layerColorZones.length) {
+      const innerLayerRep = this.tryGetNonPoleColorInLayer(layerIdx + 1, originalColor.id, skipColorIds, rngFn);
+      if (innerLayerRep) return innerLayerRep;
+    }
+    return originalColor;
+  }
+
+  /**
+   * BallShooter.GetBestColorInternal(skipColors):
+   * Selects a candidate unexploded non-rock ColorZone from the outermost active layer
+   * (excluding skipColorIds when possible) and applies AdjustColorForPoleBias if the chosen
+   * zone is a pole zone or its color only exists on the poles in that layer.
+   */
+  getBestShooterColor(skipColorIds = null, rngFn = Math.random) {
+    if (this.isSnakeLevel) this._rebuildSnakeZones();
+    const skipSet = skipColorIds instanceof Set
+      ? skipColorIds
+      : Array.isArray(skipColorIds)
+        ? new Set(skipColorIds.filter(Boolean))
+        : skipColorIds
+          ? new Set([skipColorIds])
+          : new Set();
+
+    let targetLayer = -1;
+    for (let l = 0; l < this.layerColorZones.length; l++) {
+      const zones = this.layerColorZones[l] || [];
+      if (zones.some((cz) => !cz.hasRock && cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb))) {
+        targetLayer = l;
+        break;
+      }
+    }
+
+    if (targetLayer >= 0) {
+      const layerZones = (this.layerColorZones[targetLayer] || []).filter(
+        (cz) => !cz.hasRock && cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb)
+      );
+      let filtered = layerZones.filter((cz) => !skipSet.has(cz.color.id));
+      if (filtered.length === 0) filtered = layerZones;
+
+      if (filtered.length > 0) {
+        const chosenZone = filtered[Math.floor(rngFn() * filtered.length)];
+        if (chosenZone.isPoleZone || this.colorOnlyOnPolesInLayer(targetLayer, chosenZone.color.id)) {
+          const nonPole = this.tryGetNonPoleColorInLayer(targetLayer, chosenZone.color.id, skipSet, rngFn)
+            || (targetLayer + 1 < this.layerColorZones.length
+              ? this.tryGetNonPoleColorInLayer(targetLayer + 1, chosenZone.color.id, skipSet, rngFn)
+              : null);
+          if (nonPole) return nonPole;
+        }
+        return this.adjustColorForPoleBias(targetLayer, chosenZone.color, skipSet, rngFn);
+      }
+    }
+
+    const pool = this.getRemainingColorPool();
+    const nonSkipped = pool.filter((c) => !skipSet.has(c.id));
+    const pickFrom = nonSkipped.length > 0 ? nonSkipped : pool;
+    return pickFrom[Math.floor(rngFn() * pickFrom.length)] || this.colors[0];
+  }
+
+  /**
    * MainScene.AdjustColorForPoleBias:
    * Prefer colors present on the outermost alive layer AND outside extreme top/bottom poles
    * whenever non-pole pearls exist, so players are never dealt impossible pole-only shots.
@@ -7333,7 +7680,8 @@ class PearlSphere {
       if (!p.alive || p.hasRock || p.isColorBomb) continue;
       if (targetLayer >= 0 && p.layer !== targetLayer) continue;
       allCounts.set(p.color.id, (allCounts.get(p.color.id) || 0) + 1);
-      if (Math.abs(p.worldDir.y) <= 0.84) {
+      const inPoleZone = p.colorZone && p.colorZone.isPoleZone;
+      if (!inPoleZone && Math.abs(p.worldDir.y) <= POLE_COS_20_DEG) {
         nonPoleCounts.set(p.color.id, (nonPoleCounts.get(p.color.id) || 0) + 1);
       }
     }
@@ -7433,7 +7781,7 @@ class PearlSphere {
     if (wb.cooldown > 0) {
       return { hit: true, invulnerable: true, defeated: false, hp: wb.hp };
     }
-    const dmg = isHeavy ? 2 : 1;
+    const dmg = 1;
     wb.hp = Math.max(0, wb.hp - dmg);
     wb.cooldown = wb.damageCooldown || 0.45;
     wb.hitFlash = 1.0;
@@ -7476,36 +7824,43 @@ class PearlSphere {
   }
 
   /**
-   * Pick an untargeted alive non-rock ColorZone on the outermost active shell for PropellerMissile!
+   * PropellerMissile.GetRandomColorZoneTarget():
+   * Where(!Exploded).Except(targetedColorZones).GroupBy(layer).OrderByDescending(radius).First()
+   * -> keep zones whose random bubble is on the camera side; if none, take the zone closest to
+   * the camera -> list[Random.Range(0, count)].
    */
   pickPropellerTargetZone(excludeZoneIds = null) {
     if (this.isSnakeLevel) this._rebuildSnakeZones();
-    let bestZone = null;
-    let bestScore = -Infinity;
+    let chosen = null;
 
     for (let l = 0; l < this.layerColorZones.length; l++) {
       const zones = this.layerColorZones[l] || [];
-      let foundInLayer = false;
+      const candidates = [];
       for (let i = 0; i < zones.length; i++) {
         const cz = zones[i];
         if (cz.hasRock || cz.targetedByPropeller) continue;
         if (excludeZoneIds && excludeZoneIds.has(cz.id)) continue;
         const alivePearls = cz.pearls.filter((p) => p.alive && !p.hasRock && !p.isColorBomb);
         if (alivePearls.length === 0) continue;
-        foundInLayer = true;
-        const cp = cz.centerPearl.alive ? cz.centerPearl : alivePearls[0];
-        // Prefer camera-facing outer zones with substantial pearl count
-        const score = -cp.worldDir.z * 3.0 + Math.min(12, alivePearls.length) * 0.35;
-        if (score > bestScore) {
-          bestScore = score;
-          bestZone = cz;
-        }
+        const rp = alivePearls[Math.floor(Math.random() * alivePearls.length)];
+        candidates.push({ cz, rp });
       }
-      if (foundInLayer && bestZone) break;
+      if (candidates.length === 0) continue;
+
+      let pool = candidates.filter((c) => c.rp.worldDir.z < 0);
+      if (pool.length === 0) {
+        let best = candidates[0];
+        for (let i = 1; i < candidates.length; i++) {
+          if (candidates[i].rp.worldPos.z < best.rp.worldPos.z) best = candidates[i];
+        }
+        pool = [best];
+      }
+      chosen = pool[Math.floor(Math.random() * pool.length)].cz;
+      break;
     }
 
-    if (bestZone) bestZone.targetedByPropeller = true;
-    return bestZone;
+    if (chosen) chosen.targetedByPropeller = true;
+    return chosen;
   }
 
   /**
@@ -7539,15 +7894,29 @@ class PearlSphere {
   }
 
   /**
-   * ColorBomb.cs target resolution:
-   * - Normal colored ball -> zaps all non-rock ColorZones of ballColor.id
-   * - Special ball (rainbow/bomb/propeller) -> zaps ColorZones of the color with the MOST alive zones!
+   * ColorBomb.Activate(Color color, bool useMostCommon):
+   * - Queries Level.GetOuterMostColorZones() (outermost active layer's non-rock, alive ColorZones).
+   * - Normal colored ball -> zaps outer ColorZones of ballColor.id (falling back to most common if none).
+   * - Special ball (useMostCommon = true) -> GroupBy(z => z.Color).OrderByDescending(g => g.Count()).First().
+   * - Enumerable.Take(zones, 6): caps at 6 ColorZones per ColorBomb activation!
    */
   findColorBombTargetZones(ballColor, useMostCommon = false) {
     if (this.isSnakeLevel) this._rebuildSnakeZones();
+
+    // Find outermost layer that has active non-rock ColorZones (Level.GetOuterMostColorZones)
+    let activeLayerZones = null;
+    for (let l = 0; l < this.layerColorZones.length; l++) {
+      const lZones = this.layerColorZones[l] || [];
+      if (lZones.some((cz) => !cz.hasRock && cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb))) {
+        activeLayerZones = lZones;
+        break;
+      }
+    }
+    const sourceZones = activeLayerZones || this.colorZones;
+
     const byColor = new Map();
-    for (let i = 0; i < this.colorZones.length; i++) {
-      const cz = this.colorZones[i];
+    for (let i = 0; i < sourceZones.length; i++) {
+      const cz = sourceZones[i];
       if (cz.hasRock) continue;
       const hasAlive = cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb);
       if (!hasAlive) continue;
@@ -7567,9 +7936,9 @@ class PearlSphere {
       }
     }
 
-    const zones = (chosenColorId && byColor.get(chosenColorId)) ? byColor.get(chosenColorId).slice() : [];
-    // Order front-to-back so sequential electric arcs sweep dramatically across camera view!
-    zones.sort((a, b) => a.centerPearl.worldPos.z - b.centerPearl.worldPos.z);
+    const rawZones = (chosenColorId && byColor.get(chosenColorId)) ? byColor.get(chosenColorId).slice() : [];
+    // ColorBomb.Activate: Enumerable.Take(6) in list order (no sort in ISIL)
+    const zones = rawZones.slice(0, 6);
     const chosenColorObj = this.colors.find((c) => c.id === chosenColorId) || ballColor || this.colors[0];
     return { targetColor: chosenColorObj, zones };
   }
@@ -7588,68 +7957,81 @@ class PearlSphere {
   }
 
   /**
-   * Inner-to-Outer Multi-Layer Support Check:
-   * When inner layer (l + 1) loses pearls, any outer-layer pearl (l) over that void
-   * (including rocked pearls!) detaches and cascades into the Funnel!
+   * SphereLayer.CheckAllZonesForFloating -> ColorZone.CheckFloating:
+   *   An outer ColorZone whose innerLayerNeighborZones are ALL exploded (or that has none while
+   *   not on the innermost layer) drops as a whole unit (ColorZone.InDirectHit).
+   * ColorZone.FindDropAndReturnIsolatedBubbles is ONLY reached from the bomb path
+   * (EnableBubblesWithinRadius): carved zones keep their largest connected fragment.
    */
-  _detachUnsupportedOuterPearls(knockedList, startOrder = 3) {
-    if (this.isSnakeLevel || this.layerPearls.length < 2) return;
+  _detachUnsupportedOuterPearls(knockedList, startOrder = 3, bombCarved = false) {
+    if (this.isSnakeLevel) return;
 
-    for (let l = this.layerPearls.length - 2; l >= 0; l--) {
-      const innerAlive = this.layerPearls[l + 1].filter((p) => p.alive);
-      const outerList = this.layerPearls[l];
-      if (innerAlive.length === 0) {
-        for (let i = 0; i < outerList.length; i++) {
-          if (outerList[i].alive) {
-            this._killPearl(outerList[i], knockedList, startOrder + (i % 6));
+    // Bomb path: FindDropAndReturnIsolatedBubbles on carved zones
+    if (bombCarved) {
+      for (let z = 0; z < this.colorZones.length; z++) {
+        const cz = this.colorZones[z];
+        const aliveInZone = cz.pearls.filter((p) => p.alive);
+        if (aliveInZone.length === 0 || aliveInZone.length === cz.pearls.length) continue;
+        const seenInZone = new Set();
+        const comps = [];
+        for (let i = 0; i < aliveInZone.length; i++) {
+          const startP = aliveInZone[i];
+          if (seenInZone.has(startP.id)) continue;
+          const comp = [startP];
+          seenInZone.add(startP.id);
+          let h = 0;
+          while (h < comp.length) {
+            const cur = comp[h++];
+            for (let k = 0; k < cur.neighbors.length; k++) {
+              const nb = cur.neighbors[k];
+              if (nb.alive && nb.colorZone === cz && !seenInZone.has(nb.id)) {
+                seenInZone.add(nb.id);
+                comp.push(nb);
+              }
+            }
           }
+          comps.push(comp);
         }
-        continue;
-      }
-
-      for (let i = 0; i < outerList.length; i++) {
-        const op = outerList[i];
-        if (!op.alive) continue;
-        let hasUnderSupport = false;
-        const ox = op.worldDir.x, oy = op.worldDir.y, oz = op.worldDir.z;
-        for (let j = 0; j < innerAlive.length; j++) {
-          const ip = innerAlive[j];
-          if (ox * ip.worldDir.x + oy * ip.worldDir.y + oz * ip.worldDir.z >= 0.925) {
-            hasUnderSupport = true;
-            break;
+        if (comps.length <= 1) continue;
+        comps.sort((a, b) => b.length - a.length);
+        for (let c = 1; c < comps.length; c++) {
+          const comp = comps[c];
+          for (let k = 0; k < comp.length; k++) {
+            comp[k].hasRock = false;
+            comp[k].isRock = false;
+            this._killPearl(comp[k], knockedList, startOrder + 2 + (k % 4));
           }
-        }
-        if (!hasUnderSupport) {
-          this._killPearl(op, knockedList, startOrder + (i % 5));
         }
       }
     }
 
-    // Drop tiny isolated floating islands (<= 2 pearls) on any shell
-    for (let l = 0; l < this.layerPearls.length; l++) {
-      const shell = this.layerPearls[l];
-      const seen = new Set();
-      for (let i = 0; i < shell.length; i++) {
-        const p = shell[i];
-        if (!p.alive || seen.has(p.id)) continue;
-        const comp = [p];
-        seen.add(p.id);
-        let h = 0;
-        while (h < comp.length) {
-          const cur = comp[h++];
-          for (let k = 0; k < cur.neighbors.length; k++) {
-            const nb = cur.neighbors[k];
-            if (nb.alive && !seen.has(nb.id)) {
-              seen.add(nb.id);
-              comp.push(nb);
+    // Whole-ColorZone cross-layer support cascade (innermost outer layer first so chains propagate outward)
+    if (this.layerColorZones.length < 2) return;
+    for (let l = this.layerColorZones.length - 2; l >= 0; l--) {
+      const zones = this.layerColorZones[l] || [];
+      for (let z = 0; z < zones.length; z++) {
+        const cz = zones[z];
+        if (!cz.pearls.some((p) => p.alive)) continue;
+        const innerSet = cz.innerLayerNeighborZones;
+        let hasAliveInnerZone = false;
+        if (innerSet) {
+          for (const innerCz of innerSet) {
+            if (innerCz && innerCz.pearls.some((ip) => ip.alive)) {
+              hasAliveInnerZone = true;
+              break;
             }
           }
         }
-        if (comp.length <= 2 && shell.length > 12) {
-          for (let c = 0; c < comp.length; c++) {
-            this._killPearl(comp[c], knockedList, startOrder + 4);
+        if (hasAliveInnerZone) continue;
+        for (let i = 0; i < cz.pearls.length; i++) {
+          const p = cz.pearls[i];
+          if (p.alive) {
+            p.hasRock = false;
+            p.isRock = false;
+            this._killPearl(p, knockedList, startOrder + (i % 5));
           }
         }
+        cz.hasRock = false;
       }
     }
   }
@@ -7678,7 +8060,8 @@ class PearlSphere {
       const basePR = (this.pearls[0] && this.pearls[0].radius) || 0.50;
       const blastR = Math.max(2.75, basePR * 5.4);
       const blastRSq = blastR * blastR;
-      const rockR = blastR * 1.28;
+      // SphereLayer.OnTriggerStay: RemoveRocksWithinRadius(pos, ballType == Bomb ? 3 : 2)
+      const rockR = Math.max(3.0, blastR);
       const rockRSq = rockR * rockR;
       const shieldBlastRSq = Math.pow(blastR * 1.45, 2);
       const origin = { x: hitPearl.worldPos.x, y: hitPearl.worldPos.y, z: hitPearl.worldPos.z };
@@ -7724,7 +8107,7 @@ class PearlSphere {
         this._rebuildSnakeZones();
         if (knocked.length > 0) this.snakeProgress = Math.max(0.06, this.snakeProgress - 0.05);
       } else {
-        this._detachUnsupportedOuterPearls(knocked, 4);
+        this._detachUnsupportedOuterPearls(knocked, 4, true);
       }
       return {
         matched: knocked.length > 0 || shatteredRocks.length > 0,
@@ -7777,11 +8160,31 @@ class PearlSphere {
       return { matched: true, knocked, spawnedMissiles, lightningTargets, shatteredRocks, brokenShields };
     }
 
-    // 3. Stone / BubbleRock cannot be matched until Bomb strips its outer shell!
+    // 3. BubbleRock: SphereLayer.OnTriggerStay -> ANY ball touching a rock calls RemoveRocksWithinRadius(pos, 2).
+    //    The coloured bubble underneath survives; the ball is consumed without a colour match.
     if (hitPearl.hasRock) {
+      const origin = hitPearl.worldPos;
+      const rockRSq = 2.0 * 2.0;
+      const hitLayer = hitPearl.layer || 0;
+      const touchedZones = new Set();
+      for (let i = 0; i < this.pearls.length; i++) {
+        const p = this.pearls[i];
+        if (!p.alive || !p.hasRock || p.layer > hitLayer) continue;
+        if (distSq3(p.worldPos, origin) <= rockRSq) {
+          p.hasRock = false;
+          p.isRock = false;
+          p.highlight = 1.0;
+          shatteredRocks.push(p);
+          if (p.colorZone) touchedZones.add(p.colorZone);
+        }
+      }
+      for (const cz of touchedZones) {
+        if (!cz.pearls.some((zp) => zp.alive && zp.hasRock)) cz.hasRock = false;
+      }
       return {
         matched: false,
         hitRock: true,
+        rockShatteredOnly: shatteredRocks.length > 0,
         knocked,
         spawnedMissiles,
         lightningTargets,
@@ -7796,21 +8199,34 @@ class PearlSphere {
       return { matched: false, knocked, spawnedMissiles, lightningTargets, shatteredRocks, brokenShields };
     }
 
-    // BFS Domino Wave across matching continent / snake run
-    const visited = new Set([hitPearl.id]);
-    const queue = [{ pearl: hitPearl, dist: 0 }];
-    let head = 0;
-    while (head < queue.length) {
-      const { pearl: cur, dist } = queue[head++];
-      this._killPearl(cur, knocked, dist);
-      if (cur.isPropeller) spawnedMissiles.push(cur);
+    if (!this.isSnakeLevel && hitPearl.colorZone) {
+      // ColorZone.DirectHit: every remaining bubble of the zone drops, ordered by distance from the impact.
+      const origin = hitPearl.worldPos;
+      const zoneAlive = hitPearl.colorZone.pearls.filter((p) => p.alive && !p.hasRock);
+      zoneAlive.sort((a, b) => distSq3(a.worldPos, origin) - distSq3(b.worldPos, origin));
+      const step = Math.max(1, Math.ceil(zoneAlive.length / 12));
+      for (let i = 0; i < zoneAlive.length; i++) {
+        const p = zoneAlive[i];
+        this._killPearl(p, knocked, Math.floor(i / step));
+        if (p.isPropeller) spawnedMissiles.push(p);
+      }
+    } else {
+      // Snake levels: chain run along the snake (neighbour BFS)
+      const visited = new Set([hitPearl.id]);
+      const queue = [{ pearl: hitPearl, dist: 0 }];
+      let head = 0;
+      while (head < queue.length) {
+        const { pearl: cur, dist } = queue[head++];
+        this._killPearl(cur, knocked, dist);
+        if (cur.isPropeller) spawnedMissiles.push(cur);
 
-      for (let i = 0; i < cur.neighbors.length; i++) {
-        const nb = cur.neighbors[i];
-        if (!nb.alive || nb.hasRock || visited.has(nb.id)) continue;
-        if (nb.color.id === targetColorId) {
-          visited.add(nb.id);
-          queue.push({ pearl: nb, dist: dist + 1 });
+        for (let i = 0; i < cur.neighbors.length; i++) {
+          const nb = cur.neighbors[i];
+          if (!nb.alive || nb.hasRock || visited.has(nb.id)) continue;
+          if (nb.color.id === targetColorId) {
+            visited.add(nb.id);
+            queue.push({ pearl: nb, dist: dist + 1 });
+          }
         }
       }
     }
@@ -11010,6 +11426,7 @@ const {
   CONTINUE_COST_COINS,
   CONTINUE_EXTRA_SHOTS,
   getDailyStagesForDate,
+  computeDynamicShotBudgetFromSphere,
   resolveLevelDescriptor,
   buildCustomLevelDescriptor
 } = require('./levels');
@@ -11020,8 +11437,11 @@ const { WebGLPearlRenderer } = require('./webgl_renderer');
 const BASE_LAUNCH_SPEED = 26.5;
 const GRAVITY_Y = -20.0;
 const BALL_RADIUS = 0.40;
+// BallShooter.aimHitboxWidth = 0.25 (monobehaviour_params.json) for pass-through clearance on breached outer shells
+const AIM_HITBOX_WIDTH = 0.25;
 const STAR_MAX_HITS = 5;
-const RELOAD_COOLDOWN = 0.12;
+// BallShooter.ShootBall: DOVirtual.DelayedCall(0.25f, AddBall) before the next ball exists
+const RELOAD_COOLDOWN = 0.25;
 const WATER_SPRING_COUNT = 24;
 
 class PearlGemEngine {
@@ -11669,7 +12089,27 @@ class PearlGemEngine {
     }
     this.sphere.updateWorldPositions();
 
-    this.shotsLeft = desc.shots;
+    this.shotsLeft = computeDynamicShotBudgetFromSphere(this.sphere, desc);
+    desc.shots = this.shotsLeft;
+    this.continuesUsed = 0;
+    const minZones = typeof this.sphere.calculateMinimumBallsNeededToFinish === 'function'
+      ? this.sphere.calculateMinimumBallsNeededToFinish()
+      : 10;
+    // Level.Start (0x023DC2E4): if ((int)(minBalls * 1.5f) <= 6) levelConfig.propellerBubbleChance = 0f
+    if (Math.floor(minZones * 1.5) <= 6) {
+      desc.propellerChance = 0;
+    }
+    // Level.Start (0x023DC174-0x023DC220): coreActivateHits = Min(10, Max(4, CeilToInt((minBalls / 3.5f) * 1.1f)) + 1),
+    // and if (patternType == Stripes && coreActivateHits >= 7) coreActivateHits = 6.
+    let cah = Math.min(10, Math.max(4, Math.ceil((minZones / 3.5) * 1.1)) + 1);
+    if (desc.patternType === 2 && cah >= 7) {
+      cah = 6;
+    }
+    this.coreActivateHits = cah;
+    // CoreUI.SpawnStreakItem: needs totalHits >= 5; hits = config.streakHit (clamped) or Random in [totalHits*0.5, totalHits)
+    this.streakHits = desc.streakHit > 0
+      ? Math.min(desc.streakHit, cah - 1)
+      : Math.ceil(cah * 0.5) + Math.floor(Math.random() * Math.max(1, cah - Math.ceil(cah * 0.5)));
     this.pearlsThisRun = 0;
     this.coinsThisRun = 0;
     this._runColorHexes = [];
@@ -11693,13 +12133,7 @@ class PearlGemEngine {
       : null;
 
     if (desc.gift) {
-      const gKey = desc.gift.type === 'rainbow'
-        ? 'rainbowBalls'
-        : desc.gift.type === 'bomb'
-          ? 'bombBalls'
-          : 'propellerBalls';
-      this.storage.data[gKey] = (this.storage.data[gKey] || 0) + (desc.gift.amount || 2);
-      this.storage.save();
+      this.storage.addSpecialBall(desc.gift.type, desc.gift.amount || 2);
     }
 
     const hasTut = !!(desc.tutorial && desc.tutorial.zh);
@@ -11713,11 +12147,11 @@ class PearlGemEngine {
     this.tutorialAction = shouldShowTut && desc.tutorial ? (desc.tutorial.action || 'match') : '';
 
     if (this.tutorialAction === 'rainbow' && (this.storage.data.rainbowBalls || 0) <= 0) {
-      this.storage.update({ rainbowBalls: 1 });
+      this.storage.addSpecialBall('rainbow', 1);
     } else if (this.tutorialAction === 'bomb' && (this.storage.data.bombBalls || 0) <= 0) {
-      this.storage.update({ bombBalls: 1 });
+      this.storage.addSpecialBall('bomb', 1);
     } else if (this.tutorialAction === 'propeller_ball' && (this.storage.data.propellerBalls || 0) <= 0) {
-      this.storage.update({ propellerBalls: 1 });
+      this.storage.addSpecialBall('propeller', 1);
     }
 
     this.activeBooster = desc.forceBall || null;
@@ -11835,6 +12269,7 @@ class PearlGemEngine {
     this._runColorHexes = [];
     this.starStreak = 0;
     this.starMaxHits = desc.starMaxHits || 5;
+    this.coreActivateHits = this.starMaxHits;
     this.starMeterPct = 0;
     this.starAlertBanner = false;
     this._starAlertTimer = 0;
@@ -11904,7 +12339,7 @@ class PearlGemEngine {
     return desc;
   }
 
-  _pickFromFixedQueueOrPool(pool, excludeColorId = null) {
+  _pickFromFixedQueueOrPool(excludeColorId = null) {
     const q = this.levelDescriptor && this.levelDescriptor.fixedShooterQueue;
     if (Array.isArray(q) && q.length > 0 && (this._shooterQueueCursor || 0) < q.length) {
       const cIdx = Number(q[this._shooterQueueCursor]);
@@ -11912,32 +12347,58 @@ class PearlGemEngine {
       const chosen = this.sphere.colors[cIdx];
       if (chosen) return chosen;
     }
-    if (excludeColorId) {
-      const other = pool.filter((c) => c.id !== excludeColorId);
-      if (other.length > 0 && Math.random() < 0.78) {
-        return other[Math.floor(Math.random() * other.length)];
-      }
-    }
-    return pool[Math.floor(Math.random() * pool.length)];
+    return this.sphere.getBestShooterColor(excludeColorId ? [excludeColorId] : null);
   }
 
   _rollInitialBalls() {
     this._shooterQueueCursor = 0;
-    const pool = this.sphere.getRemainingColorPool();
-    this.currentBallColor = this._pickFromFixedQueueOrPool(pool, null);
-    this.nextBallColor = this._pickFromFixedQueueOrPool(pool, this.currentBallColor ? this.currentBallColor.id : null);
+    this.currentBallColor = this._pickFromFixedQueueOrPool(null);
+    this.nextBallColor = this._pickFromFixedQueueOrPool(
+      this.currentBallColor ? this.currentBallColor.id : null
+    );
   }
 
   _advanceBallQueue() {
-    const pool = this.sphere.getRemainingColorPool();
     const q = this.levelDescriptor && this.levelDescriptor.fixedShooterQueue;
     const hasMoreFixed = Array.isArray(q) && (this._shooterQueueCursor || 0) < q.length;
-    if (!hasMoreFixed && !pool.some((c) => c.id === this.nextBallColor.id)) {
-      this.currentBallColor = pool[Math.floor(Math.random() * pool.length)];
-    } else {
+    if (hasMoreFixed || (this.nextBallColor && this.sphere.isColorAliveOnSphere(this.nextBallColor.id))) {
       this.currentBallColor = this.nextBallColor;
+    } else {
+      this.currentBallColor = this.sphere.getBestShooterColor(null);
     }
-    this.nextBallColor = this._pickFromFixedQueueOrPool(pool, this.currentBallColor ? this.currentBallColor.id : null);
+    // BallShooter.<AddBall>b__46_1: colorSwitcher.SetColor(getBestColor(_ball.color)) always skips the current colour
+    this.nextBallColor = this._pickFromFixedQueueOrPool(
+      this.currentBallColor ? this.currentBallColor.id : null
+    );
+  }
+
+  /**
+   * BallShooter.ReplaceSecondaryBallIfColorNotExisting():
+   * Whenever ColorZones explode or cascade, checks whether the held primary (currentBallColor)
+   * or secondary (nextBallColor) ball's color has gone completely extinct on the sphere.
+   * Any extinct color is immediately replaced via getBestShooterColor with a scale pop animation!
+   */
+  _replaceShooterBallsIfColorNotExisting() {
+    if (!this.sphere || this.sphere.isCleared()) return false;
+    const q = this.levelDescriptor && this.levelDescriptor.fixedShooterQueue;
+    if (Array.isArray(q) && q.length > 0) return false;
+    let replaced = false;
+    if (this.currentBallColor && !this.sphere.isColorAliveOnSphere(this.currentBallColor.id)) {
+      const skip = this.nextBallColor && this.sphere.isColorAliveOnSphere(this.nextBallColor.id)
+        ? [this.nextBallColor.id]
+        : null;
+      this.currentBallColor = this.sphere.getBestShooterColor(skip);
+      replaced = true;
+    }
+    if (this.nextBallColor && !this.sphere.isColorAliveOnSphere(this.nextBallColor.id)) {
+      const skip = this.currentBallColor ? [this.currentBallColor.id] : null;
+      this.nextBallColor = this.sphere.getBestShooterColor(skip);
+      replaced = true;
+    }
+    if (replaced) {
+      this.swapAnim = Math.max(this.swapAnim || 0, 0.65);
+    }
+    return replaced;
   }
 
   // ==================== ZERO-MISFIRE SWAP & SPECIAL BALLS ====================
@@ -12367,6 +12828,7 @@ class PearlGemEngine {
     const rBound = outerR + 1.15;
     const rayNearSphere = (bSphere * bSphere - (rcx * rcx + rcy * rcy + rcz * rcz - rBound * rBound)) >= 0;
 
+    let rayHitLayer = -1;
     if (!targetWorld && rayNearSphere) {
       const pearls = this.sphere.pearls;
       for (let i = 0; i < pearls.length; i++) {
@@ -12386,12 +12848,16 @@ class PearlGemEngine {
           if (t > 1.0 && t < bestT) {
             bestT = t;
             targetWorld = wp;
+            rayHitLayer = p.layer || 0;
           }
         }
       }
     }
 
     if (!targetWorld) {
+      if (this.sphere.starActivated && !this.sphere.starHit && !this.sphere.isSnakeLevel) {
+        rayHitLayer = this.sphere.layerPearls.length;
+      }
       const c = rcx * rcx + rcy * rcy + rcz * rcz - outerR * outerR;
       const disc = bSphere * bSphere - c;
       if (disc >= 0) {
@@ -12410,6 +12876,7 @@ class PearlGemEngine {
         };
       }
     }
+    this._aimTargetLayerHint = rayHitLayer;
 
     const launchSpeed = this._getLaunchSpeed();
     const start = this.shootWorldOrigin;
@@ -12423,54 +12890,64 @@ class PearlGemEngine {
     const vy = (dy - 0.5 * GRAVITY_Y * flightT * flightT) / flightT;
     this.aimVelocity = { x: vx, y: vy, z: vz };
 
+    // BallShooter.ShowTrajectory: trajectoryPointCount = 60, trajectoryTimeStep = 0.025 (2 substeps of 0.0125s),
+    // stops when z > center.z + 0.75 * activeOuterRadius
     const pts = [];
-    const dt = 0.013;
+    const subDt = 0.0125;
     let px = start.x, py = start.y, pz = start.z;
     let cvx = vx, cvy = vy, cvz = vz;
     let hitPearl = null;
     const ballR = BALL_RADIUS;
-    const maxZ = center.z + (this.activeMaxR || 6.0) + 5.0;
+    const maxZ = center.z + (this.activeMaxR || 6.0) * 0.75;
 
     let hitCoreStar = false;
-    for (let step = 0; step < 68; step++) {
+    for (let step = 0; step < 60; step++) {
       pts.push({ x: px, y: py, z: pz });
-      px += cvx * dt;
-      py += cvy * dt;
-      pz += cvz * dt;
-      cvy += GRAVITY_Y * dt;
-      const curPos = { x: px, y: py, z: pz };
+      let collided = false;
+      for (let sub = 0; sub < 2; sub++) {
+        px += cvx * subDt;
+        py += cvy * subDt;
+        pz += cvz * subDt;
+        cvy += GRAVITY_Y * subDt;
+        const curPos = { x: px, y: py, z: pz };
 
-      if (this.sphere.checkWarsonCollision(curPos, ballR)) {
-        pts.push(curPos);
-        break;
+        if (this.sphere.checkWarsonCollision(curPos, ballR)) {
+          pts.push(curPos);
+          collided = true;
+          break;
+        }
+        if (this.sphere.checkSatelliteCollision(curPos, ballR)) {
+          pts.push(curPos);
+          collided = true;
+          break;
+        }
+        const sh = this.sphere.checkShieldCollision(curPos, ballR);
+        if (sh) {
+          pts.push(curPos);
+          collided = true;
+          break;
+        }
+        if (
+          !this.levelDescriptor.noStar &&
+          !this.sphere.isSnakeLevel &&
+          this.sphere.starActivated &&
+          !this.sphere.starHit &&
+          dist3(curPos, center) <= this.sphere.starRadius + ballR
+        ) {
+          hitCoreStar = true;
+          pts.push(curPos);
+          collided = true;
+          break;
+        }
+        const nearest = this._findCollidingPearl(curPos, ballR, rayHitLayer);
+        if (nearest) {
+          hitPearl = nearest;
+          pts.push(curPos);
+          collided = true;
+          break;
+        }
       }
-      if (this.sphere.checkSatelliteCollision(curPos, ballR)) {
-        pts.push(curPos);
-        break;
-      }
-      const sh = this.sphere.checkShieldCollision(curPos, ballR);
-      if (sh) {
-        pts.push(curPos);
-        break;
-      }
-      if (
-        !this.levelDescriptor.noStar &&
-        !this.sphere.isSnakeLevel &&
-        this.sphere.starActivated &&
-        !this.sphere.starHit &&
-        dist3(curPos, center) <= this.sphere.starRadius + ballR
-      ) {
-        hitCoreStar = true;
-        pts.push(curPos);
-        break;
-      }
-      const nearest = this._findCollidingPearl(curPos, ballR);
-      if (nearest) {
-        hitPearl = nearest;
-        pts.push(curPos);
-        break;
-      }
-      if (pz > maxZ) break;
+      if (collided || pz > maxZ) break;
     }
 
     this.aimArcPoints = pts;
@@ -12508,15 +12985,16 @@ class PearlGemEngine {
     if (!this.aimVelocity) return false;
 
     const boost = this.activeBooster;
-    if (!boost && this.shotsLeft <= 0) return false;
+    const isForcedBall = !!boost && this.levelDescriptor.forceBall === boost;
+    if (!isForcedBall && this.shotsLeft <= 0) return false;
 
     if (boost) {
-      const key = boost === 'rainbow' ? 'rainbowBalls' : boost === 'bomb' ? 'bombBalls' : 'propellerBalls';
-      if (this.levelDescriptor.forceBall !== boost) {
-        this.storage.data[key] = Math.max(0, (this.storage.data[key] || 0) - 1);
-        this.storage.save();
-      }
-      if (this.levelDescriptor.forceBall === boost) {
+      // BallShooter.ShootBall: special ball -> AddToSpecialBallCount(type, -1) AND ballsLeft -= 1,
+      // unless LevelConfig.forceBallPrefab supplied it (then neither is decremented)
+      if (!isForcedBall) {
+        this.storage.addSpecialBall(boost, -1);
+        this.shotsLeft = Math.max(0, this.shotsLeft - 1);
+      } else {
         this.levelDescriptor.forceBall = null;
       }
       this.audio.playSfx(boost === 'rainbow' ? 'rainbow_shoot' : 'shoot');
@@ -12537,7 +13015,8 @@ class PearlGemEngine {
         z: this.aimVelocity.z
       },
       trail: [],
-      radius: 0.42,
+      radius: BALL_RADIUS,
+      targetLayerHint: typeof this._aimTargetLayerHint === 'number' ? this._aimTargetLayerHint : -1,
       color: this.currentBallColor,
       booster: boost
     });
@@ -12673,6 +13152,16 @@ class PearlGemEngine {
     if (this.sphere && (this.mode === 'playing' || this.mode === 'won' || this.mode === 'continue')) {
       if (!this.inGameSettingsOpen) {
         this.sphere.step(clampedDt);
+        // Level.CheckRadius() + Player.UpdatePos(dt, true) + Funnel.UpdatePos(dt):
+        // Smoothly zoom camera Z and contract Funnel Y/scale as outer sphere layers are cleared!
+        if (
+          this.mode === 'playing' &&
+          this.flyingBalls.length === 0 &&
+          typeof this.sphere.activeOuterRadius === 'number' &&
+          Math.abs(this.sphere.activeOuterRadius - this.activeMaxR) > 0.005
+        ) {
+          this._syncPlayfieldLayout(this.sphere.activeOuterRadius);
+        }
         // Emit smoke puffs on damaged Warson Boss
         if (this.sphere.warsonBoss && this.sphere.warsonBoss.active && this.sphere.warsonBoss.smokeLevel > 0) {
           if (Math.random() < this.sphere.warsonBoss.smokeLevel * 0.25) {
@@ -12772,9 +13261,10 @@ class PearlGemEngine {
     if (!this.sphere || !this.sphere.pendingCoinDrops || this.sphere.pendingCoinDrops.length === 0) return;
     while (this.sphere.pendingCoinDrops.length > 0) {
       const cp = this.sphere.pendingCoinDrops.shift();
-      this.coinsThisRun += 5;
-      this.storage.data.coins = (this.storage.data.coins || 0) + 5;
-      this._spawnFlyingRewardFromWorld('coin', cp.worldPos, '+5');
+      // BonusLevelCoin -> BallsCountdown.EmitCoinsOverTime: 1 coin per collected bonus coin
+      this.coinsThisRun += 1;
+      this.storage.data.coins = (this.storage.data.coins || 0) + 1;
+      this._spawnFlyingRewardFromWorld('coin', cp.worldPos, '+1');
     }
     this.storage.save();
     this.audio.playSfx('coin');
@@ -12872,8 +13362,10 @@ class PearlGemEngine {
 
     if (this.shotsLeft > 0) {
       this._winCountdownAccum += dt;
-      while (this._winCountdownAccum >= 0.065 && this.shotsLeft > 0) {
-        this._winCountdownAccum -= 0.065;
+      // BallsCountdown.StartCountDown: interval = Min(5f / startCount, 0.25f)
+      if (!this._winTick) this._winTick = Math.min(5 / Math.max(1, this.shotsLeft), 0.25);
+      while (this._winCountdownAccum >= this._winTick && this.shotsLeft > 0) {
+        this._winCountdownAccum -= this._winTick;
         this.shotsLeft = Math.max(0, this.shotsLeft - 1);
         const mult = this.lastWinSummary && this.lastWinSummary.doubled ? 2 : 1;
         this.winBonusPearlsAnim += 12 * mult;
@@ -13194,11 +13686,12 @@ class PearlGemEngine {
       if (this.homingMissiles[i].targetZone) exclude.add(this.homingMissiles[i].targetZone.id);
     }
 
+    const baseSign = originPos.x < this.sphere.center.x ? -1 : 1;
     for (let k = 0; k < count; k++) {
       const targetZone = this.sphere.pickPropellerTargetZone(exclude);
       if (!targetZone) break;
       exclude.add(targetZone.id);
-      const sideSign = k % 2 === 0 ? -1 : 1;
+      const sideSign = k === 0 ? baseSign : (k % 2 === 0 ? baseSign : -baseSign);
       const slotPos = {
         x: this.sphere.center.x + sideSign * (outerR * 0.85 + 0.6),
         y: this.sphere.center.y + (k === 2 ? 2.2 : 0.65),
@@ -13350,7 +13843,11 @@ class PearlGemEngine {
             this._spawnFlyingRewardFromWorld('coin', sat.worldPos, '+25');
             this.audio.playSfx('coin');
           }
+          // Satellite.OnTriggerEnter: Destroy(other.gameObject) -> the ball is consumed
+          this.flyingBalls.splice(b, 1);
+          removed = true;
           this._emitUIState();
+          break;
         }
 
         const sh = this.sphere.checkShieldCollision(fb.pos, fb.radius);
@@ -13389,7 +13886,7 @@ class PearlGemEngine {
           } else {
             this.audio.playSfx('metal_hit');
             this._spawnPopSparkles(fb.pos, [0.9, 0.92, 0.96], 6);
-            this._onShotMissed(true);
+            // ShieldPart.OnCollisionEnter (metal): raises shield-hit feedback only; no miss / streak reset
           }
           this.flyingBalls.splice(b, 1);
           removed = true;
@@ -13421,7 +13918,7 @@ class PearlGemEngine {
           break;
         }
 
-        const hitPearl = this._findCollidingPearl(fb.pos, fb.radius);
+        const hitPearl = this._findCollidingPearl(fb.pos, fb.radius, fb.targetLayerHint);
         if (hitPearl) {
           const res = this.sphere.resolveHit(hitPearl, fb.color, fb.booster, { deferColorBomb: true });
           if (res.matched) {
@@ -13478,13 +13975,18 @@ class PearlGemEngine {
           } else {
             this._spawnPopSparkles(fb.pos, fb.color ? fb.color.rgb : [0.9, 0.9, 0.95], 5);
             if (res.hitRock) {
-              this.audio.playSfx('metal_hit');
-              this.floatingHitText = '需用炸弹击碎岩石！';
-              this._floatingHitTimer = 1.15;
+              // SphereLayer.OnTriggerStay: RemoveRocksWithinRadius(hitPos, 2) then Destroy(ball); no zone miss
+              if (res.shatteredRocks && res.shatteredRocks.length > 0) {
+                this._spawnRockDebris(res.shatteredRocks);
+                this.audio.playSfx('rock_shatter');
+                this._completeTutorial('rock');
+                this.floatingHitText = `岩石击碎 ×${res.shatteredRocks.length}`;
+                this._floatingHitTimer = 1.15;
+              }
             } else {
               this.audio.playSfx('hit1');
+              this._onShotMissed(true);
             }
-            this._onShotMissed(true);
           }
           this.flyingBalls.splice(b, 1);
           removed = true;
@@ -13504,7 +14006,7 @@ class PearlGemEngine {
     }
   }
 
-  _findCollidingPearl(pos, ballR) {
+  _findCollidingPearl(pos, ballR, targetLayerHint = -1) {
     const center = this.sphere.center;
     const sc = this.sphere.spawnScale || 1.0;
 
@@ -13544,10 +14046,18 @@ class PearlGemEngine {
       if (Math.abs(dCenter - lRadius) > ballR + 0.68) continue;
 
       const arr = layerPearls[l];
+      // Level.IsInnerLayerIntact + BallShooter.aimHitboxWidth (0.25):
+      // When aiming through a breached outer shell toward an inner layer or activated CoreStar,
+      // outer shells use the narrow 0.25 hitbox so rim pearls don't snag pass-through shots!
+      const isOuterPassThrough =
+        (typeof targetLayerHint === 'number' && targetLayerHint > l) ||
+        (this.sphere.starActivated && !this.sphere.starHit && this.sphere.layerAliveCounts && this.sphere.layerAliveCounts[l] < arr.length);
+      const effBallR = isOuterPassThrough ? Math.min(ballR, AIM_HITBOX_WIDTH) : ballR;
+
       for (let i = 0; i < arr.length; i++) {
         const p = arr[i];
         if (!p.alive) continue;
-        const rSum = ballR + p.radius * 0.96;
+        const rSum = effBallR + p.radius * 0.96;
         const wp = p.worldPos;
         const dx = pos.x - wp.x;
         const dy = pos.y - wp.y;
@@ -13589,11 +14099,11 @@ class PearlGemEngine {
       this._emitUIState();
       return;
     }
-    const maxStarHits = Math.max(1, (this.levelDescriptor && this.levelDescriptor.starMaxHits) || STAR_MAX_HITS);
-    this.starStreak = Math.min(maxStarHits, this.starStreak + 1);
-    this.starMeterPct = Math.round((this.starStreak / maxStarHits) * 100);
+    const maxHits = (this.levelDescriptor && this.levelDescriptor.starMaxHits) || this.coreActivateHits || STAR_MAX_HITS;
+    this.starStreak = Math.min(maxHits, this.starStreak + 1);
+    this.starMeterPct = Math.round((this.starStreak / maxHits) * 100);
 
-    if (!this.streakRewardClaimed && this.streakRewardType && this.starStreak >= Math.min(3, maxStarHits)) {
+    if (!this.streakRewardClaimed && this.streakRewardType && maxHits >= 5 && this.starStreak >= (this.streakHits || 3)) {
       this.streakRewardClaimed = true;
       if (this.streakRewardType === 'coin') {
         this.coinsThisRun += 20;
@@ -13601,19 +14111,19 @@ class PearlGemEngine {
         this._spawnFlyingReward('coin', this.width * 0.5, 92, '+20');
         this.audio.playSfx('coin');
       } else if (this.streakRewardType === 'rainbow') {
-        this.storage.data.rainbowBalls = (this.storage.data.rainbowBalls || 0) + 1;
+        this.storage.addSpecialBall('rainbow', 1);
         this._spawnFlyingReward('rainbow', this.width * 0.5, 92, '+1');
         this.audio.playSfx('star_activated');
       } else if (this.streakRewardType === 'bomb') {
-        this.storage.data.bombBalls = (this.storage.data.bombBalls || 0) + 1;
+        this.storage.addSpecialBall('bomb', 1);
         this._spawnFlyingReward('bomb', this.width * 0.5, 92, '+1');
         this.audio.playSfx('star_activated');
       } else if (this.streakRewardType === 'propeller') {
-        this.storage.data.propellerBalls = (this.storage.data.propellerBalls || 0) + 1;
+        this.storage.addSpecialBall('propeller', 1);
         this._spawnFlyingReward('propeller', this.width * 0.5, 92, '+1');
         this.audio.playSfx('star_activated');
       } else if (this.streakRewardType === 'colorbomb') {
-        this.storage.data.rainbowBalls = (this.storage.data.rainbowBalls || 0) + 1;
+        this.storage.addSpecialBall('rainbow', 1);
         this.storage.data.coins = (this.storage.data.coins || 0) + 15;
         this._spawnFlyingReward('rainbow', this.width * 0.5, 92, '+1');
         this.audio.playSfx('star_activated');
@@ -13622,7 +14132,7 @@ class PearlGemEngine {
       this._completeTutorial('streak_item');
     }
 
-    if (this.starStreak >= maxStarHits && !this.sphere.starActivated) {
+    if (this.starStreak >= maxHits && !this.sphere.starActivated) {
       this._activateCoreStar();
       return;
     }
@@ -13651,7 +14161,7 @@ class PearlGemEngine {
 
   _activateCoreStar() {
     if (!this.sphere || this.sphere.starActivated || this.sphere.starHit) return;
-    const maxStarHits = Math.max(1, (this.levelDescriptor && this.levelDescriptor.starMaxHits) || STAR_MAX_HITS);
+    const maxStarHits = (this.levelDescriptor && this.levelDescriptor.starMaxHits) || this.coreActivateHits || STAR_MAX_HITS;
     this.sphere.starActivated = true;
     this.sphere.starSpawnScale = 0.22;
     this.starStreak = maxStarHits;
@@ -13686,6 +14196,9 @@ class PearlGemEngine {
   _enqueueDroppedPearls(knockedItems, opts = null) {
     if (!knockedItems || knockedItems.length === 0) return;
 
+    // Immediately auto-replace primary/secondary shooter balls if their color went extinct on the sphere!
+    this._replaceShooterBallsIfColorNotExisting();
+
     const isCoreCascade = !!(opts && opts.coreCascade);
     const count = knockedItems.length;
     this._floatingHitAccum += count;
@@ -13707,11 +14220,14 @@ class PearlGemEngine {
       this.pearlsThisRun += creditImmediate;
     }
 
+    // Bubble.Drop (Bubble_Drop_OutwardImpulse.asm): impulse = (0.2 * sphereRadius + 2.1) * worldNormal
     const outerR = this.activeMaxR || 6.0;
-    const outImpulse = (isCoreCascade ? 0.28 : 0.20) * outerR + (isCoreCascade ? 2.65 : 2.10);
+    const spawnScale = (this.sphere && this.sphere.spawnScale) || 1.0;
     for (let i = 0; i < maxPhys; i++) {
       const idx = count > maxPhys ? Math.min(count - 1, Math.floor((i * count) / maxPhys)) : i;
       const { pearl, waveOrder } = knockedItems[idx];
+      const layerR = pearl.shellRadius ? pearl.shellRadius / spawnScale : outerR;
+      const outImpulse = (isCoreCascade ? 0.28 : 0.20) * layerR + (isCoreCascade ? 2.65 : 2.10);
       const outDir = pearl.worldDir || { x: 0, y: -1, z: 0 };
       const baseR = pearl.radius || 0.50;
       this.fallingPearls.push({
@@ -13756,8 +14272,10 @@ class PearlGemEngine {
         fp.vel.y = Math.min(-38.0, fp.vel.y - 45.0 * dt);
         fp.pos.y += fp.vel.y * dt;
       } else {
-        fp.vel.y -= 42.0 * dt;
-        if (fp.age >= 0.14 || fp.pos.y <= fY + 2.2 * fScale) {
+        fp.vel.y += GRAVITY_Y * dt; // Physics.gravity (-20) until BubbleAttractor captures the bubble
+        // BubbleAttractor.FixedUpdate: yDistanceGate = 15.0, centerTargetScaleMultiplier = 0.35, scaleResponsiveness = 8.0
+        const withinYGate = Math.abs(fp.pos.y - throatY) <= 15.0;
+        if (withinYGate && (fp.age >= 0.14 || fp.pos.y <= fY + 2.2 * fScale)) {
           const tx = -fp.pos.x;
           const ty = throatY - fp.pos.y;
           const tz = -fp.pos.z;
@@ -13767,8 +14285,8 @@ class PearlGemEngine {
           fp.vel.x += ((tx / dThroat) * suctionSpeed - fp.vel.x) * blend;
           fp.vel.y += ((ty / dThroat) * suctionSpeed - fp.vel.y) * blend;
           fp.vel.z += ((tz / dThroat) * suctionSpeed - fp.vel.z) * blend;
-          const shrink = Math.max(0.68, Math.min(0.94, 0.68 + (dThroat / (6.0 * fScale)) * 0.26));
-          fp.radius = (fp.baseRadius || 0.50) * shrink;
+          const targetScale = (fp.baseRadius || 0.50) * Math.max(0.35, Math.min(0.94, 0.35 + (dThroat / (6.0 * fScale)) * 0.59));
+          fp.radius += (targetScale - fp.radius) * Math.min(1.0, 8.0 * dt);
         }
 
         fp.pos.x += fp.vel.x * dt;
@@ -13797,7 +14315,7 @@ class PearlGemEngine {
 
         if ((fp.pos.y <= throatY + 0.25 * fScale && Math.hypot(fp.pos.x, fp.pos.z) <= throatR * 1.15) || fp.pos.y < throatY - 0.2 * fScale) {
           fp.phase = 'pipe';
-          fp.radius = (fp.baseRadius || 0.50) * 0.66;
+          fp.radius = (fp.baseRadius || 0.50) * 0.35;
           fp.vel.y = Math.min(fp.vel.y, -38.0);
         }
       }
@@ -13907,20 +14425,29 @@ class PearlGemEngine {
     const baseCoinBeforeCountdown = 20 + (this.levelDescriptor.levelType === 1 ? 35 : 0) + this.coinsThisRun;
     const coinReward = 20 + leftoverShots * 2 + (this.levelDescriptor.levelType === 1 ? 35 : 0);
 
+    const modeTag = this.levelDescriptor.modeTag;
+    const isCampaign = !modeTag || modeTag === 'campaign';
+
     this._winCountdownAccum = 0;
+    this._winTick = 0;
     this._winFireworkTimer = 0.28;
     this.winBonusPearlsAnim = 0;
     this._winDisplayPearls = basePearlsBeforeCountdown;
     this._winDisplayCoins = baseCoinBeforeCountdown;
     this._winBarPct = Math.min(100, (prevForgeTotal / forgeTarget) * 100);
-    this._winBarTargetPct = Math.min(100, ((prevForgeTotal + totalPearlsEarned) / forgeTarget) * 100);
-    this.postWinBatchPearls = totalPearlsEarned;
+    this._winBarTargetPct = isCampaign
+      ? Math.min(100, ((prevForgeTotal + totalPearlsEarned) / forgeTarget) * 100)
+      : this._winBarPct;
+    this.postWinBatchPearls = isCampaign ? totalPearlsEarned : 0;
     this.postWinBatchDoubled = false;
 
-    this.storage.addCollectedPearls(totalPearlsEarned, this._runColorHexes);
+    // GameManager.LevelCleared: only normal campaign levels add pearls to GemCreator;
+    // Daily / GemQuest / HolidaySparkle events only advance event stage & award coins.
+    if (isCampaign) {
+      this.storage.addCollectedPearls(totalPearlsEarned, this._runColorHexes);
+    }
     this.storage.data.coins = (this.storage.data.coins || 0) + coinReward;
 
-    const modeTag = this.levelDescriptor.modeTag;
     let triggerSafeOutroAfterWin = false;
     let triggerEnvelopeOutroAfterWin = false;
     let dailyGrandReward = null;
@@ -13950,6 +14477,7 @@ class PearlGemEngine {
         this.storage.data.maxUnlockedLevel = nextLvl;
       }
       this.storage.data.level = nextLvl;
+      this.storage.data.worldLevelIndex = (this.storage.data.worldLevelIndex || 0) + 1;
     }
 
     this.storage.save();
@@ -14025,12 +14553,13 @@ class PearlGemEngine {
       return;
     }
 
+    const isCampaign = !this.levelDescriptor.modeTag || this.levelDescriptor.modeTag === 'campaign';
     const snap = this.storage.getSnapshot();
-    if (snap.unpouredPearls > 0 || snap.canCreateGem) {
+    if (isCampaign && (snap.unpouredPearls > 0 || snap.canCreateGem)) {
       this.enterMenu('gems', { postWinFlow: true });
       return;
     }
-    if (this.levelDescriptor.modeTag === 'campaign') {
+    if (isCampaign) {
       this.startLevel(this.storage.data.level);
     } else {
       this.enterMenu('home');
@@ -14055,7 +14584,13 @@ class PearlGemEngine {
     return true;
   }
 
+  // ContinueScreen.Setup: price = round(basePrice * 2^continuesUsed)
+  getContinueCostCoins() {
+    return Math.round(CONTINUE_COST_COINS * Math.pow(2, this.continuesUsed || 0));
+  }
+
   _resumeAfterContinue() {
+    this.continuesUsed = (this.continuesUsed || 0) + 1;
     this.shotsLeft += CONTINUE_EXTRA_SHOTS;
     this.loseGraceTimer = 1.1;
     if (this.sphere && this.sphere.isSnakeLevel && this.sphere.snakeReachedEnd) {
@@ -14069,8 +14604,9 @@ class PearlGemEngine {
 
   continueWithCoins() {
     if (this.mode !== 'continue') return false;
-    if ((this.storage.data.coins || 0) < CONTINUE_COST_COINS) return false;
-    this.storage.data.coins -= CONTINUE_COST_COINS;
+    const cost = this.getContinueCostCoins();
+    if ((this.storage.data.coins || 0) < cost) return false;
+    this.storage.data.coins -= cost;
     this.storage.save();
     this._resumeAfterContinue();
     this.audio.playSfx('coin');
@@ -14703,15 +15239,15 @@ class PearlGemEngine {
       this._spawnFlyingReward('coin', this.width * 0.5, this.height * 0.5, `+${r.coins}`);
     }
     if (r.rainbow) {
-      this.storage.data.rainbowBalls = (this.storage.data.rainbowBalls || 0) + r.rainbow;
+      this.storage.addSpecialBall('rainbow', r.rainbow);
       this._spawnFlyingReward('rainbow', this.width * 0.45, this.height * 0.5, `+${r.rainbow}`);
     }
     if (r.bomb) {
-      this.storage.data.bombBalls = (this.storage.data.bombBalls || 0) + r.bomb;
+      this.storage.addSpecialBall('bomb', r.bomb);
       this._spawnFlyingReward('bomb', this.width * 0.55, this.height * 0.5, `+${r.bomb}`);
     }
     if (r.propeller) {
-      this.storage.data.propellerBalls = (this.storage.data.propellerBalls || 0) + r.propeller;
+      this.storage.addSpecialBall('propeller', r.propeller);
       this._spawnFlyingReward('propeller', this.width * 0.50, this.height * 0.5, `+${r.propeller}`);
     }
     this.storage.save();
@@ -14933,7 +15469,7 @@ class PearlGemEngine {
       shotsLeft: this.shotsLeft,
       activeBooster: this.activeBooster,
       starStreak: this.starStreak || 0,
-      starMaxHits: desc.starMaxHits || STAR_MAX_HITS,
+      starMaxHits: desc.starMaxHits || this.coreActivateHits || STAR_MAX_HITS,
       starMeterPct: this.starMeterPct,
       starActivated: !!(this.sphere && this.sphere.starActivated),
       starAlertBanner: this.starAlertBanner,
@@ -14971,8 +15507,8 @@ class PearlGemEngine {
       ),
       winBarPct: Math.min(100, Math.round(this._winBarPct || 0)),
       winCountingDown: this.mode === 'won' && this.shotsLeft > 0,
-      continueCost: CONTINUE_COST_COINS,
-      continueCanAfford: save.coins >= CONTINUE_COST_COINS,
+      continueCost: this.getContinueCostCoins(),
+      continueCanAfford: save.coins >= this.getContinueCostCoins(),
       continueExtraShots: CONTINUE_EXTRA_SHOTS,
       showcaseGem: this.showcaseGem,
       selectedCollectionGem: this.selectedCollectionGem,
@@ -16322,8 +16858,8 @@ module.exports = { PearlGemEngine };
         if (ui.mode === 'gem_revealed' && ui.showcaseGem) {
           const g = ui.showcaseGem;
           const descTxt = g.willSavePlanet
-            ? ('发射此宝石即可彻底净化第 ' + g.savedWorldIndex + ' 星球！合成奖励 +' + g.coinBonus + ' 金币')
-            : ('发射宝石飞向星球击碎暗影腐化！合成奖励 +' + g.coinBonus + ' 金币');
+            ? ('发射此宝石即可彻底净化第 ' + g.savedWorldIndex + ' 星球！')
+            : '发射宝石飞向星球击碎暗影腐化！';
           html += `
             <div class="pg-layer pointer-auto">
               <div class="pg-gem-reveal-wrap">
