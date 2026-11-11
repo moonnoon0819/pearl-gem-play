@@ -3857,6 +3857,612 @@ module.exports = OFFICIAL_DATA;
 
 });
 
+__register('./mod_config', function(module, exports, require) {
+/**
+ * mod_config.js — 1:1 Atomic Decompiled Baseline & Extensible Modding Architecture
+ *
+ * Ground-truth source:
+ *   com.asmallgame.pearlgem v1.082 (Unity 6000.0.64f1 IL2CPP ARM64 + UnityPy Assets)
+ *   - original_decompiled/configs/monobehaviour_params.json
+ *   - original_decompiled/DECOMPILED_ARCHITECTURE.md
+ *   - original_decompiled/decompiled_methods/{arm64_annotated,isil}/*
+ *
+ * Design principles:
+ *   1. OFFICIAL_ATOMIC_CONFIG is deep-frozen and 100% 1:1 identical to the decompiled original.
+ *   2. Every gameplay subsystem (Camera, Funnel/Attractor, Shooter/Ballistics, Sphere/Fibonacci/Zones,
+ *      Obstacles/Specials, Star Streak, Shot Budget, Economy/GemCreator) reads from `modConfig`
+ *      with zero overhead and falls back to `OFFICIAL_ATOMIC_CONFIG`.
+ *   3. Supports declarative Mod Presets, partial JSON patches, custom procedural pattern registration,
+ *      and lifecycle hooks (`onLevelDescriptorResolved`, `onSphereBuilt`, `onBeforeShoot`, `onAfterHit`,
+ *      `onStarStreakFull`, `onLevelWin`, `onLevelFail`) for arbitrary future gameplay "魔改".
+ */
+
+function deepFreeze(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  Object.freeze(obj);
+  const keys = Object.keys(obj);
+  for (let i = 0; i < keys.length; i++) {
+    const val = obj[keys[i]];
+    if (val && typeof val === 'object' && !Object.isFrozen(val)) {
+      deepFreeze(val);
+    }
+  }
+  return obj;
+}
+
+function deepClone(obj) {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(deepClone);
+  const out = {};
+  const keys = Object.keys(obj);
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    out[k] = deepClone(obj[k]);
+  }
+  return out;
+}
+
+/**
+ * 1:1 Decompiled Atomic Constants (Unity 6000.0.64f1 / IL2CPP ARM64)
+ */
+const OFFICIAL_ATOMIC_CONFIG = deepFreeze({
+  presetId: 'official',
+  presetName: '1:1 原版原子默认',
+
+  // MainSceneTransforms.Level_Center, Player, MainCamera (monobehaviour_params.json)
+  camera: {
+    fovYDeg: 74.0,
+    refAspect: 9 / 16,
+    near: 0.1,
+    far: 100.0,
+    levelCenterX: 0.0,
+    levelCenterY: 2.75,
+    levelCenterZ: 0.0,
+    playerZMin: -15.0,
+    playerZRadiusFactor: -3.65,
+    camLocalX: 0.0,
+    camLocalY: 1.25,
+    camLocalZ: -2.0,
+  },
+
+  // MainSceneTransforms.Funnel & BubbleAttractor (monobehaviour_params.json + BubbleAttractor_ApplyAttraction.asm)
+  funnel: {
+    worldYCamZFactor: 0.18,
+    worldYRadiusFactor: -0.60,
+    scaleMin: 1.05,
+    scaleRadiusFactor: 0.24,
+    scaleOffset: 0.08,
+    pipeLocalY: -3.17,
+    lightCircleLocalY: -1.709,
+    lightCircleScale: [1.204, 1.618, 1.204],
+    targetLocalY: 0.82,
+    attractorSpeed: 400.0,
+    attractorMaxSpeed: 400.0,
+    attractorMinDistance: 5.0,
+    yDistanceGate: 15.0,
+    handoffBlendDuration: 1.75,
+    centerTargetScaleMultiplier: 0.35,
+    scaleResponsiveness: 8.0,
+    endTargetSpeedMultiplier: 20.0,
+    endTargetTightenFactor: 5.0,
+    dropOutwardRadiusFactor: 0.2,
+    dropOutwardBaseImpulse: 2.1,
+  },
+
+  // BallShooter & PhysicsManager (monobehaviour_params.json + BallShooter_GetAimDirection.asm + BallShooter.txt)
+  shooter: {
+    localPosInPlayer: [0.96, -1.221, 2.8],
+    shootPointOffsetFromCam: [0.96, -2.471, 4.8],
+    readyBallScale: 0.80,
+    readyBallRadius: 0.40,
+    switcherOffsetFromShootPoint: [-0.516, -0.597, 0.0],
+    switcherScale: 0.4214,
+    shootForce: 22.0,
+    additionalUpwardForce: 1.0,
+    gravityY: -20.0,
+    shootingCooldown: 0.10,
+    reloadDelay: 0.25,
+    trajectoryPointCount: 60,
+    trajectoryTimeStep: 0.025,
+    aimHitboxWidth: 0.25,
+    cancelViewportThresholdY: 0.10,
+    specialBallCostsShot: true,
+    autoReplaceExtinctColor: true,
+    poleBiasAngleDeg: 20.0,
+    doubleSwitchFirstCost: 0,
+    doubleSwitchRepeatCost: 15,
+    rescueSatelliteShotThreshold: 3,
+  },
+
+  // SphereLayer, Bubble & ColorZone (monobehaviour_params.json + SphereLayer.txt + ColorZone.txt + Level.txt)
+  sphere: {
+    bubbleWorldDiameter: 1.0,
+    bubbleWorldRadius: 0.50,
+    minPearlRadius: 0.498,
+    bubbleSpacingDivisor: 0.23,
+    bubblePackingFactor: 0.85,
+    goldenAngleRad: 2.399963229728653,
+    neighborDistMultiplier: 2.42,
+    coreStarScaleSlope: 0.25,
+    coreStarScaleIntercept: 1.75,
+    poleZoneMaxAngleDeg: 20.0,
+    clearRatioThreshold: 1.0,
+    yoyoFrequency: 1.25,
+    yoyoAmplitude: 1.0,
+  },
+
+  // Obstacles & Special Balls (Rock, Bomb, ColorBomb, PropellerMissile, Shield, Warson)
+  obstacles: {
+    rockHitRadiusNormal: 2.0,
+    rockHitRadiusBomb: 3.0,
+    normalBallBreaksRock: true,
+    bombBlastRadiusMultiplier: 1.0,
+    colorBombMaxZones: 6,
+    propellerBallMissileCount: 3,
+    propellerPearlMissileCount: 1,
+    glassShieldHp: 1,
+    metalShieldBombOnly: true,
+    cascadeMode: 'whole_zone', // 'whole_zone' (1:1 decompiled) | 'bubble_bfs' (legacy mod)
+    warsonBaseHp: 18,
+  },
+
+  // CoreUI & StreakItem (WorldConfig.txt + CoreUI.txt)
+  starStreak: {
+    formulaSlope: 0.22,
+    formulaMultiplier: 1.5,
+    minHits: 3,
+    maxHits: 12,
+    stripesCapHits: 6,
+    streakItemRatio: 0.60,
+    resetOnEmptyMiss: false,
+    resetOnWrongColorHit: true,
+    streakItemEnabled: true,
+  },
+
+  // Level.SetupLevel Dynamic Shot Budget (Level.txt + WorldConfig.txt)
+  shotBudget: {
+    zoneShotMultiplier: 1.25,
+    highLevelStepPenaltyAfter: 20,
+    highLevelStepPenaltyModulo: 3,
+    minShotFloor: 3,
+    shieldExtraBallsDefault: 3,
+  },
+
+  // Economy, GemCreator, Shop & BonusLevelCoin (GameOverScreen.txt + GemCreatorScreen.txt + BonusLevelCoin.txt)
+  economy: {
+    continueBasePrice: 100,
+    continuePriceExponent: 2,
+    continueExtraBalls: 5,
+    eventLevelsGrantPearls: false,
+    bonusLevelCoinValue: 5,
+    leftoverShotPearls: 2,
+    leftoverShotCoins: 2,
+    winBaseCoins: 18,
+    halfwayGiftRatio: 0.50,
+    halfwayGiftCoins: 60,
+    halfwayGiftRainbow: 1,
+    duckTapPearls: 2,
+  },
+});
+
+/**
+ * Built-in Mod Presets ("魔改预设")
+ * - 'official': 100% 1:1 original atomic behavior
+ * - 'zen_relax': Relaxed shot budget, easier Star Streak, glass/metal shields breakable, 96% clear threshold
+ * - 'arcade_overload': High-speed shots, mega blasts, 6-missile propellers, 12-zone lightning, double economy
+ * - 'hardcore_purist': Tighter shot budget, special balls cost shots, empty misses reset streak, rocks require bombs
+ */
+const MOD_PRESETS = deepFreeze({
+  official: OFFICIAL_ATOMIC_CONFIG,
+
+  zen_relax: {
+    presetId: 'zen_relax',
+    presetName: '休闲爽快魔改',
+    shooter: {
+      shootForce: 24.0,
+      aimHitboxWidth: 0.32,
+      specialBallCostsShot: false,
+    },
+    sphere: {
+      clearRatioThreshold: 0.96,
+    },
+    obstacles: {
+      rockHitRadiusNormal: 2.5,
+      rockHitRadiusBomb: 3.8,
+      normalBallBreaksRock: true,
+      colorBombMaxZones: 10,
+      propellerBallMissileCount: 5,
+      propellerPearlMissileCount: 2,
+      metalShieldBombOnly: false,
+    },
+    starStreak: {
+      formulaMultiplier: 1.0,
+      minHits: 2,
+      maxHits: 8,
+      stripesCapHits: 5,
+      streakItemRatio: 0.50,
+      resetOnEmptyMiss: false,
+      resetOnWrongColorHit: false,
+    },
+    shotBudget: {
+      zoneShotMultiplier: 1.35,
+      minShotFloor: 5,
+    },
+    economy: {
+      continueBasePrice: 50,
+      continueExtraBalls: 8,
+      bonusLevelCoinValue: 8,
+      leftoverShotPearls: 3,
+      winBaseCoins: 25,
+    },
+  },
+
+  arcade_overload: {
+    presetId: 'arcade_overload',
+    presetName: '街机爆破魔改',
+    shooter: {
+      shootForce: 28.0,
+      additionalUpwardForce: 0.6,
+      shootingCooldown: 0.05,
+      reloadDelay: 0.14,
+      aimHitboxWidth: 0.30,
+    },
+    obstacles: {
+      rockHitRadiusNormal: 2.8,
+      rockHitRadiusBomb: 4.5,
+      bombBlastRadiusMultiplier: 1.5,
+      colorBombMaxZones: 12,
+      propellerBallMissileCount: 6,
+      propellerPearlMissileCount: 2,
+      metalShieldBombOnly: false,
+    },
+    starStreak: {
+      formulaMultiplier: 1.15,
+      minHits: 3,
+      maxHits: 9,
+      streakItemRatio: 0.50,
+    },
+    shotBudget: {
+      zoneShotMultiplier: 1.15,
+    },
+    economy: {
+      eventLevelsGrantPearls: true,
+      bonusLevelCoinValue: 10,
+      leftoverShotPearls: 4,
+      leftoverShotCoins: 4,
+      winBaseCoins: 36,
+      halfwayGiftCoins: 120,
+      duckTapPearls: 5,
+    },
+  },
+
+  hardcore_purist: {
+    presetId: 'hardcore_purist',
+    presetName: '硬核大师魔改',
+    shooter: {
+      shootForce: 22.0,
+      aimHitboxWidth: 0.18,
+      specialBallCostsShot: true,
+      doubleSwitchFirstCost: 15,
+      doubleSwitchRepeatCost: 25,
+    },
+    sphere: {
+      clearRatioThreshold: 1.0,
+    },
+    obstacles: {
+      rockHitRadiusNormal: 1.6,
+      rockHitRadiusBomb: 2.6,
+      normalBallBreaksRock: false,
+      colorBombMaxZones: 4,
+      propellerBallMissileCount: 2,
+      propellerPearlMissileCount: 1,
+      metalShieldBombOnly: true,
+    },
+    starStreak: {
+      formulaMultiplier: 1.75,
+      minHits: 4,
+      maxHits: 14,
+      stripesCapHits: 8,
+      resetOnEmptyMiss: true,
+      resetOnWrongColorHit: true,
+    },
+    shotBudget: {
+      zoneShotMultiplier: 0.85,
+      minShotFloor: 3,
+    },
+    economy: {
+      continueBasePrice: 150,
+      continueExtraBalls: 3,
+    },
+  },
+});
+
+/**
+ * UI & Schema Metadata for the 3D Visual Editor (`🧬 魔改与原子参数` tab)
+ */
+const MOD_PARAMETER_SCHEMA = deepFreeze([
+  {
+    section: 'shooter',
+    title: '🎯 发射器与弹道物理 (BallShooter)',
+    items: [
+      { key: 'shootForce', label: '发射初速度 (shootForce)', type: 'number', min: 10, max: 40, step: 0.5, unit: 'm/s' },
+      { key: 'additionalUpwardForce', label: '上扬速度补偿 (upwardForce)', type: 'number', min: 0, max: 5, step: 0.1, unit: 'm/s' },
+      { key: 'gravityY', label: '重力加速度 Y (gravity.y)', type: 'number', min: -40, max: -5, step: 1, unit: 'm/s²' },
+      { key: 'aimHitboxWidth', label: '瞄准射线碰撞半径 (aimHitbox)', type: 'number', min: 0.05, max: 0.60, step: 0.01, unit: 'm' },
+      { key: 'shootingCooldown', label: '发射冷却时间 (cooldown)', type: 'number', min: 0.02, max: 0.50, step: 0.01, unit: 's' },
+      { key: 'specialBallCostsShot', label: '特殊道具球消耗步数', type: 'boolean' },
+      { key: 'autoReplaceExtinctColor', label: '自动替换已灭绝颜色球', type: 'boolean' },
+    ],
+  },
+  {
+    section: 'shotBudget',
+    title: '🎱 球数预算与容错 (Level.SetupLevel)',
+    items: [
+      { key: 'zoneShotMultiplier', label: '色区球数倍率 (zoneShotMult)', type: 'number', min: 0.5, max: 2.5, step: 0.05, unit: 'x' },
+      { key: 'highLevelStepPenaltyAfter', label: '高难步数缩减起始关', type: 'number', min: 1, max: 100, step: 1, unit: '关' },
+      { key: 'highLevelStepPenaltyModulo', label: '高难步数缩减阶梯周期', type: 'number', min: 5, max: 60, step: 5, unit: '关' },
+      { key: 'minShotFloor', label: '最低保底步数 (minShots)', type: 'number', min: 1, max: 15, step: 1, unit: '球' },
+      { key: 'shieldExtraBallsDefault', label: '护盾默认补偿步数', type: 'number', min: 0, max: 15, step: 1, unit: '球' },
+    ],
+  },
+  {
+    section: 'obstacles',
+    title: '💣 障碍物与特殊球规则 (Obstacles & Specials)',
+    items: [
+      { key: 'rockHitRadiusNormal', label: '普通球震落岩石半径', type: 'number', min: 0.5, max: 5.0, step: 0.1, unit: 'm' },
+      { key: 'rockHitRadiusBomb', label: '炸弹球震落岩石半径', type: 'number', min: 1.0, max: 6.0, step: 0.1, unit: 'm' },
+      { key: 'normalBallBreaksRock', label: '允许普通球震落岩石', type: 'boolean' },
+      { key: 'bombBlastRadiusMultiplier', label: '炸弹爆炸半径倍率', type: 'number', min: 0.5, max: 2.5, step: 0.1, unit: 'x' },
+      { key: 'colorBombMaxZones', label: '闪电球最大连锁色区数', type: 'number', min: 1, max: 20, step: 1, unit: '区' },
+      { key: 'propellerBallMissileCount', label: '螺旋桨球发射导弹数', type: 'number', min: 1, max: 10, step: 1, unit: '枚' },
+      { key: 'propellerPearlMissileCount', label: '螺旋桨珍珠触发导弹数', type: 'number', min: 1, max: 6, step: 1, unit: '枚' },
+      { key: 'metalShieldBombOnly', label: '金属护盾仅限炸弹击碎', type: 'boolean' },
+    ],
+  },
+  {
+    section: 'starStreak',
+    title: '⭐ 连击星能条与悬停奖励 (CoreUI & StreakItem)',
+    items: [
+      { key: 'formulaMultiplier', label: '星能条需求倍率', type: 'number', min: 0.5, max: 3.0, step: 0.05, unit: 'x' },
+      { key: 'minHits', label: '星能条最低连击下限', type: 'number', min: 1, max: 10, step: 1, unit: '连击' },
+      { key: 'maxHits', label: '星能条最高连击上限', type: 'number', min: 4, max: 25, step: 1, unit: '连击' },
+      { key: 'stripesCapHits', label: '条纹图样星能条上限', type: 'number', min: 2, max: 15, step: 1, unit: '连击' },
+      { key: 'streakItemRatio', label: '悬停道具触发进度阈值', type: 'number', min: 0.2, max: 0.9, step: 0.05, unit: '' },
+      { key: 'resetOnEmptyMiss', label: '打空未碰球时清零连击', type: 'boolean' },
+      { key: 'resetOnWrongColorHit', label: '打错颜色/护盾时清零连击', type: 'boolean' },
+    ],
+  },
+  {
+    section: 'sphere',
+    title: '🌐 球层几何与通关判定 (SphereLayer & Level)',
+    items: [
+      { key: 'clearRatioThreshold', label: '外层清场判定比例 (1.0=全清)', type: 'number', min: 0.85, max: 1.0, step: 0.005, unit: '' },
+      { key: 'bubbleSpacingDivisor', label: '球面排布间距除数 (0.23)', type: 'number', min: 0.18, max: 0.32, step: 0.005, unit: '' },
+      { key: 'bubblePackingFactor', label: '球面排布紧密度 (0.85)', type: 'number', min: 0.60, max: 1.10, step: 0.01, unit: '' },
+      { key: 'yoyoFrequency', label: 'Yoyo 呼吸缩放频率', type: 'number', min: 0.2, max: 4.0, step: 0.05, unit: 'Hz' },
+    ],
+  },
+  {
+    section: 'economy',
+    title: '💎 经济、复活与注魔奖励 (Economy & GemCreator)',
+    items: [
+      { key: 'continueBasePrice', label: '金币复活基础价格', type: 'number', min: 0, max: 500, step: 10, unit: '金币' },
+      { key: 'continueExtraBalls', label: '每次复活补充球数', type: 'number', min: 1, max: 15, step: 1, unit: '球' },
+      { key: 'bonusLevelCoinValue', label: '奖励关单颗金币球价值', type: 'number', min: 1, max: 25, step: 1, unit: '金币' },
+      { key: 'leftoverShotPearls', label: '结算余球单发转化珍珠数', type: 'number', min: 1, max: 10, step: 1, unit: '珍珠' },
+      { key: 'winBaseCoins', label: '通关基础金币奖励', type: 'number', min: 0, max: 100, step: 2, unit: '金币' },
+      { key: 'eventLevelsGrantPearls', label: '活动/特殊关也产出注魔珍珠', type: 'boolean' },
+    ],
+  },
+]);
+
+/**
+ * Deep-merge a partial Mod patch onto a base ModConfig object.
+ */
+function mergeModConfig(baseConfig, patch) {
+  const base = deepClone(baseConfig || OFFICIAL_ATOMIC_CONFIG);
+  if (!patch || typeof patch !== 'object') return base;
+
+  if (typeof patch.presetId === 'string') base.presetId = patch.presetId;
+  if (typeof patch.presetName === 'string') base.presetName = patch.presetName;
+
+  const sections = ['camera', 'funnel', 'shooter', 'sphere', 'obstacles', 'starStreak', 'shotBudget', 'economy'];
+  for (let s = 0; s < sections.length; s++) {
+    const secKey = sections[s];
+    const srcSec = patch[secKey];
+    if (!srcSec || typeof srcSec !== 'object') continue;
+    if (!base[secKey] || typeof base[secKey] !== 'object') {
+      base[secKey] = {};
+    }
+    const keys = Object.keys(srcSec);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      const val = srcSec[k];
+      if (val !== undefined) {
+        base[secKey][k] = Array.isArray(val) ? val.slice() : val;
+      }
+    }
+  }
+
+  // Sanitize critical numeric bounds so bad mod inputs cannot crash WebGL or physics
+  if (base.sphere.bubbleSpacingDivisor <= 0.05) base.sphere.bubbleSpacingDivisor = 0.23;
+  if (base.sphere.bubblePackingFactor <= 0.1) base.sphere.bubblePackingFactor = 0.85;
+  if (base.sphere.clearRatioThreshold <= 0 || base.sphere.clearRatioThreshold > 1.0) {
+    base.sphere.clearRatioThreshold = 1.0;
+  }
+  if (base.shooter.shootForce <= 1.0) base.shooter.shootForce = 22.0;
+  if (base.shooter.trajectoryPointCount < 2) base.shooter.trajectoryPointCount = 60;
+  if (base.shooter.trajectoryTimeStep <= 0.001) base.shooter.trajectoryTimeStep = 0.025;
+  if (base.shotBudget.zoneShotMultiplier <= 0.05) base.shotBudget.zoneShotMultiplier = 1.0;
+  if (base.shotBudget.minShotFloor < 1) base.shotBudget.minShotFloor = 1;
+  if (base.obstacles.colorBombMaxZones < 1) base.obstacles.colorBombMaxZones = 1;
+  if (base.obstacles.propellerBallMissileCount < 1) base.obstacles.propellerBallMissileCount = 1;
+  if (base.obstacles.propellerPearlMissileCount < 1) base.obstacles.propellerPearlMissileCount = 1;
+
+  return base;
+}
+
+/**
+ * Create a complete ModConfig from a preset name ('official' | 'zen_relax' | 'arcade_overload' | 'hardcore_purist')
+ * or a partial config object, plus optional extra overrides.
+ */
+function createModConfig(presetOrPatch = 'official', extraOverrides = null) {
+  let result = deepClone(OFFICIAL_ATOMIC_CONFIG);
+  if (typeof presetOrPatch === 'string') {
+    const preset = MOD_PRESETS[presetOrPatch] || MOD_PRESETS.official;
+    result = mergeModConfig(result, preset);
+  } else if (presetOrPatch && typeof presetOrPatch === 'object') {
+    if (typeof presetOrPatch.presetId === 'string' && MOD_PRESETS[presetOrPatch.presetId]) {
+      result = mergeModConfig(result, MOD_PRESETS[presetOrPatch.presetId]);
+    }
+    result = mergeModConfig(result, presetOrPatch);
+  }
+  if (extraOverrides && typeof extraOverrides === 'object') {
+    result = mergeModConfig(result, extraOverrides);
+  }
+  return result;
+}
+
+/**
+ * Custom Procedural Spherical Pattern Registry
+ * Allows modders to register new sphere color patterns without modifying sphere.js.
+ *
+ * Signature of `assignerFn`:
+ *   (pearlData, index, totalCount, layerIndex, layerRadius, paletteCount, rng, descriptor, modConfig) => colorPaletteIndex
+ */
+const _customPatternRegistry = {};
+
+function registerCustomPattern(patternId, metaOrFn, maybeFn) {
+  if (patternId === null || patternId === undefined || patternId === '') {
+    throw new Error('registerCustomPattern requires a non-empty patternId');
+  }
+  const key = String(patternId);
+  const fn = typeof metaOrFn === 'function' ? metaOrFn : maybeFn;
+  if (typeof fn !== 'function') {
+    throw new Error(`registerCustomPattern("${key}") requires an assigner function`);
+  }
+  const meta =
+    typeof metaOrFn === 'string'
+      ? { name: metaOrFn }
+      : typeof metaOrFn === 'object' && metaOrFn !== null
+      ? metaOrFn
+      : {};
+  _customPatternRegistry[key] = {
+    id: patternId,
+    name: meta.name || key,
+    description: meta.description || '自定义魔改球面图案',
+    assignColor: fn,
+  };
+  return _customPatternRegistry[key];
+}
+
+function unregisterCustomPattern(patternId) {
+  const key = patternId !== null && patternId !== undefined ? String(patternId) : '';
+  if (key && _customPatternRegistry[key]) {
+    delete _customPatternRegistry[key];
+    return true;
+  }
+  return false;
+}
+
+function getCustomPattern(patternId) {
+  const key = patternId !== null && patternId !== undefined ? String(patternId) : '';
+  return (key && _customPatternRegistry[key]) || null;
+}
+
+function listCustomPatterns() {
+  return Object.keys(_customPatternRegistry).map(k => ({
+    id: _customPatternRegistry[k].id,
+    name: _customPatternRegistry[k].name,
+    description: _customPatternRegistry[k].description,
+  }));
+}
+
+/**
+ * Lifecycle Hook Registry for Modding ("魔改生命周期钩子")
+ * Supported events:
+ *   - 'onLevelDescriptorResolved': (descriptor, context) => optionalModifiedDescriptor
+ *   - 'onSphereBuilt': (sphere, descriptor, modConfig) => void
+ *   - 'onBeforeShoot': (shotPayload, engine) => optionalModifiedPayload
+ *   - 'onAfterHit': (hitPayload, engine) => void
+ *   - 'onStarStreakFull': (rewardInfo, engine) => optionalModifiedRewardInfo
+ *   - 'onLevelWin': (winSummary, engine) => void
+ *   - 'onLevelFail': (failSummary, engine) => void
+ */
+function createModHookRegistry() {
+  const listeners = {};
+  return {
+    on(event, fn) {
+      if (!event || typeof fn !== 'function') return () => {};
+      if (!listeners[event]) listeners[event] = [];
+      listeners[event].push(fn);
+      return () => {
+        const arr = listeners[event];
+        if (!arr) return;
+        const idx = arr.indexOf(fn);
+        if (idx >= 0) arr.splice(idx, 1);
+      };
+    },
+    off(event, fn) {
+      if (!event || !listeners[event]) return;
+      if (!fn) {
+        delete listeners[event];
+        return;
+      }
+      const idx = listeners[event].indexOf(fn);
+      if (idx >= 0) listeners[event].splice(idx, 1);
+    },
+    clear(event) {
+      if (event) {
+        delete listeners[event];
+      } else {
+        const keys = Object.keys(listeners);
+        for (let i = 0; i < keys.length; i++) delete listeners[keys[i]];
+      }
+    },
+    emit(event, payload, context) {
+      const arr = listeners[event];
+      if (!arr || arr.length === 0) return payload;
+      let current = payload;
+      for (let i = 0; i < arr.length; i++) {
+        try {
+          const ret = arr[i](current, context);
+          if (ret !== undefined) current = ret;
+        } catch (err) {
+          // Never allow a faulty mod hook to crash the core loop
+        }
+      }
+      return current;
+    },
+    count(event) {
+      if (event) return listeners[event] ? listeners[event].length : 0;
+      let total = 0;
+      const keys = Object.keys(listeners);
+      for (let i = 0; i < keys.length; i++) total += listeners[keys[i]].length;
+      return total;
+    },
+  };
+}
+
+// Global shared hook registry for cross-module hooks (e.g., levels.js + game_engine.js)
+const GLOBAL_MOD_HOOKS = createModHookRegistry();
+
+module.exports = {
+  OFFICIAL_ATOMIC_CONFIG,
+  MOD_PRESETS,
+  MOD_PARAMETER_SCHEMA,
+  mergeModConfig,
+  createModConfig,
+  registerCustomPattern,
+  unregisterCustomPattern,
+  getCustomPattern,
+  listCustomPatterns,
+  createModHookRegistry,
+  GLOBAL_MOD_HOOKS,
+};
+
+});
+
 __register('./meshes', function(module, exports, require) {
 /**
  * Authentic 3D Meshes extracted directly from official Pearl Gem APK (com.asmallgame.pearlgem):
@@ -4483,21 +5089,28 @@ function generateFibonacciSphere(count, radius, seedOffset = 0) {
  *   - Also builds a 1:1 aspect-accurate Ortho matrix for foreground UI 3D spheres (Shooter & Switcher)
  *     guaranteeing ZERO corner perspective stretching on any screen aspect ratio.
  */
-function createCamera(width, height, maxR = 6.0) {
+function createCamera(width, height, maxR = 6.0, modConfig = null) {
+  const camCfg = (modConfig && modConfig.camera) || {};
   const safeW = Math.max(1, width);
   const safeH = Math.max(1, height);
   const aspect = safeW / safeH;
 
-  const baseFovY = 74 * (Math.PI / 180);
-  const refAspect = 9 / 16;
+  const fovYDeg = Number.isFinite(camCfg.fovYDeg) ? camCfg.fovYDeg : 74.0;
+  const baseFovY = fovYDeg * (Math.PI / 180);
+  const refAspect = Number.isFinite(camCfg.refAspect) ? camCfg.refAspect : (9 / 16);
   const baseTanHalfY = Math.tan(baseFovY * 0.5);
   const aspectScaleY = aspect < refAspect ? refAspect / Math.max(0.38, aspect) : 1.0;
   const tanHalfFovY = baseTanHalfY * aspectScaleY;
   const tanHalfFovX = tanHalfFovY * aspect;
 
   const effMaxR = Math.max(4.0, Number(maxR) || 6.0);
-  const playerZ = Math.min(-15.0, effMaxR * -3.65);
-  const camPos = { x: 0, y: 1.25, z: playerZ - 2.0 };
+  const playerZMin = Number.isFinite(camCfg.playerZMin) ? camCfg.playerZMin : -15.0;
+  const playerZRadiusFactor = Number.isFinite(camCfg.playerZRadiusFactor) ? camCfg.playerZRadiusFactor : -3.65;
+  const playerZ = Math.min(playerZMin, effMaxR * playerZRadiusFactor);
+  const camLocalX = Number.isFinite(camCfg.camLocalX) ? camCfg.camLocalX : 0.0;
+  const camLocalY = Number.isFinite(camCfg.camLocalY) ? camCfg.camLocalY : 1.25;
+  const camLocalZ = Number.isFinite(camCfg.camLocalZ) ? camCfg.camLocalZ : -2.0;
+  const camPos = { x: camLocalX, y: camLocalY, z: playerZ + camLocalZ };
   const near = 0.5;
   const far = 140.0;
 
@@ -4638,6 +5251,7 @@ __register('./levels', function(module, exports, require) {
 
 const OFFICIAL_DATA = require('./official_data');
 const { rgb01ToHex, seededRandom } = require('./math3d');
+const { OFFICIAL_ATOMIC_CONFIG, GLOBAL_MOD_HOOKS } = require('./mod_config');
 
 const { WORLDS, LEVEL_CONFIGS, GEMS, RARITIES, TUTORIALS, TIPS } = OFFICIAL_DATA;
 
@@ -4883,23 +5497,29 @@ function computeOfficialShotBudget(layers, startRadius, colorCount, shieldCfg, e
  * - if (!levelConfig.isCustom) balls += world.ballAdjustment
  * - balls = Max(balls, 3), then + shield.extraBalls
  */
-function computeDynamicShotBudgetFromSphere(sphere, desc) {
+function computeDynamicShotBudgetFromSphere(sphere, desc, modConfig = null) {
   if (!desc) return 20;
   if (!sphere || sphere.isSnakeLevel || desc.levelType === 1 || (desc.explicitBalls && desc.explicitBalls > 0)) {
     return desc.shots;
   }
+  const shotCfg = (modConfig && modConfig.shotBudget) || (sphere && sphere.modConfig && sphere.modConfig.shotBudget) || OFFICIAL_ATOMIC_CONFIG.shotBudget;
+  const zoneMult = Number.isFinite(shotCfg.zoneShotMultiplier) ? shotCfg.zoneShotMultiplier : 1.25;
+  const penaltyAfter = Number.isFinite(shotCfg.highLevelStepPenaltyAfter) ? shotCfg.highLevelStepPenaltyAfter : 20;
+  const penaltyMod = Math.max(1, Number.isFinite(shotCfg.highLevelStepPenaltyModulo) ? shotCfg.highLevelStepPenaltyModulo : 3);
+  const minFloor = Number.isFinite(shotCfg.minShotFloor) ? shotCfg.minShotFloor : 3;
+
   const minBalls = typeof sphere.calculateMinimumBallsNeededToFinish === 'function'
     ? sphere.calculateMinimumBallsNeededToFinish()
     : (sphere.colorZones ? sphere.colorZones.length : 16);
-  let balls = Math.ceil(minBalls * 1.25);
+  let balls = Math.ceil(minBalls * zoneMult);
   const li = typeof desc.levelIndex === 'number' ? desc.levelIndex : Math.max(0, (desc.levelInWorld || 1) - 1);
-  if (li > 20 && li % 3 === 0) {
+  if (li > penaltyAfter && li % penaltyMod === 0) {
     balls -= 1;
   }
   if (!desc.isCustom) {
     balls += Number(desc.worldBallAdj) || 0;
   }
-  balls = Math.max(3, balls);
+  balls = Math.max(minFloor, balls);
   balls += Number(desc.shieldExtraBalls) || 0;
   return balls;
 }
@@ -4909,7 +5529,7 @@ function computeDynamicShotBudgetFromSphere(sphere, desc) {
  * - global campaign level (1..450+)
  * - explicit official config name (e.g. 'Bonus_01', 'Snake_01', 'daily_easy01', 'GemQuest_01_Level_01', 'HolidaySparkle_01_Level_01')
  */
-function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, activeWorldIndex = null) {
+function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, activeWorldIndex = null, modConfig = null) {
   const range = getWorldRangeForGlobalLevel(globalLevel);
   const world = activeWorldIndex ? getWorldByIndex(activeWorldIndex) : range.world;
   const levelInWorld = Math.max(1, globalLevel - range.startGlobal + 1);
@@ -5093,11 +5713,14 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
   // Atomic Unity Level.Build + LevelConfig.CalculateNumberOfBubblesInLayer / SphereLayer.CalculateNumberOfBubbles:
   // l = 0 is OUTERMOST layer (maxOuterRadius), l = layersCount - 1 is INNERMOST layer (startRadius).
   // SphereLayer.CalculateNumberOfBubbles: floor(((layerRadius / 0.23) ** 2) * 0.85) (monobehaviour_params.json)
+  const sphCfg = (modConfig && modConfig.sphere) || OFFICIAL_ATOMIC_CONFIG.sphere;
+  const spacingDivisor = Number.isFinite(sphCfg.bubbleSpacingDivisor) && sphCfg.bubbleSpacingDivisor > 0.05 ? sphCfg.bubbleSpacingDivisor : 0.23;
+  const packingFactor = Number.isFinite(sphCfg.bubblePackingFactor) && sphCfg.bubblePackingFactor > 0.1 ? sphCfg.bubblePackingFactor : 0.85;
   const maxOuterRadius = startRadius + Math.max(0, layersCount - 1);
   const layers = [];
   for (let l = 0; l < layersCount; l++) {
     const rWorld = startRadius + (layersCount - 1 - l);
-    const count = Math.floor(Math.pow(rWorld / 0.23, 2) * 0.85);
+    const count = Math.floor(Math.pow(rWorld / spacingDivisor, 2) * packingFactor);
     const clampedCount = Math.min(2400, Math.max(12, count));
     const rotDegPerSec = rotSpeeds && rotSpeeds[l] !== undefined
       ? (parallax && l % 2 === 1 ? -Math.abs(rotSpeeds[l]) : rotSpeeds[l])
@@ -5215,7 +5838,7 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     displayTitleEn = displayTitleZh;
   }
 
-  return {
+  const descriptor = {
     configName: cfgName || `Auto_${world.id}_${levelInWorld}`,
     modeTag,
     globalLevel,
@@ -5269,6 +5892,13 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     decorSprite: world.decor,
     planetCol: world.planetCol
   };
+
+  return GLOBAL_MOD_HOOKS.emit('onLevelDescriptorResolved', descriptor, {
+    globalLevel,
+    explicitConfigName,
+    activeWorldIndex,
+    modConfig
+  });
 }
 
 /**
@@ -5279,7 +5909,9 @@ function buildCustomLevelDescriptor(spec = {}) {
   const worldIdx = Math.max(1, Math.min(WORLDS.length, rawWIdx <= 25 && spec.title !== undefined ? rawWIdx + 1 : (rawWIdx || 1)));
   const world = getWorldByIndex(worldIdx);
   const levelType = [0, 1, 3, 4].includes(Number(spec.levelType)) ? Number(spec.levelType) : 0;
-  const patternType = Math.max(0, Math.min(10, Number(spec.patternType) || 0));
+  const rawPat = Number(spec.patternType);
+  const patternType = Number.isFinite(rawPat) && rawPat >= 0 ? Math.floor(rawPat) : 0;
+  const customPatternId = spec.customPatternId || (patternType > 10 ? String(patternType) : null);
   const rotPattern = (spec.rotPattern || spec.rotationPattern) === 'yoyo' ? 'yoyo' : 'steady';
   const parallax = !!spec.parallax;
   const layersCount = levelType === 4 ? 1 : Math.max(1, Math.min(5, Number(spec.layersCount) || 2));
@@ -5368,6 +6000,7 @@ function buildCustomLevelDescriptor(spec = {}) {
     displayTitleZh: titleZh,
     levelType,
     patternType,
+    customPatternId,
     rotPattern,
     startRadius,
     maxOuterRadius,
@@ -6445,6 +7078,12 @@ const {
   generateFibonacciSphere,
   seededRandom
 } = require('./math3d');
+const {
+  OFFICIAL_ATOMIC_CONFIG,
+  createModConfig,
+  getCustomPattern,
+  GLOBAL_MOD_HOOKS
+} = require('./mod_config');
 
 const COLOR_BOMB_COLOR = { id: 'colorbomb', rgb: [0.35, 0.96, 1.0], hex: '#59f5ff' };
 const SHIELD_COS_HALF = Math.cos(0.31);
@@ -6475,11 +7114,18 @@ function distSqPointToSegment(p, a, b) {
 }
 
 class PearlSphere {
-  constructor(descriptor) {
+  constructor(descriptor, modConfig = null) {
     this.descriptor = descriptor;
+    this.modConfig = createModConfig(modConfig || (descriptor && descriptor.modConfig) || 'official');
+    const sphCfg = (this.modConfig && this.modConfig.sphere) || OFFICIAL_ATOMIC_CONFIG.sphere;
+    const camCfg = (this.modConfig && this.modConfig.camera) || OFFICIAL_ATOMIC_CONFIG.camera;
     this.colors = descriptor.colors;
     // Exact Main.unity Level transform position: (0, 2.75, 0)
-    this.center = { x: 0, y: 2.75, z: 0.0 };
+    this.center = {
+      x: Number.isFinite(camCfg.levelCenterX) ? camCfg.levelCenterX : 0,
+      y: Number.isFinite(camCfg.levelCenterY) ? camCfg.levelCenterY : 2.75,
+      z: Number.isFinite(camCfg.levelCenterZ) ? camCfg.levelCenterZ : 0.0
+    };
 
     this.isSnakeLevel = descriptor.levelType === 4;
     this.rotPattern = descriptor.rotPattern || 'steady';
@@ -6528,7 +7174,9 @@ class PearlSphere {
     this.warsonBoss = null;
 
     // Exact Core Star scale from Level.Build: 0.25 * startRadius + 1.75
-    this.starScale = 0.25 * (descriptor.startRadius || 4) + 1.75;
+    const starSlope = Number.isFinite(sphCfg.coreStarScaleSlope) ? sphCfg.coreStarScaleSlope : 0.25;
+    const starIntercept = Number.isFinite(sphCfg.coreStarScaleIntercept) ? sphCfg.coreStarScaleIntercept : 1.75;
+    this.starScale = starSlope * (descriptor.startRadius || 4) + starIntercept;
     this.starRadius = this.starScale * 0.85;
     this.starActivated = false;
     this.starSpawnScale = 0;
@@ -6550,6 +7198,7 @@ class PearlSphere {
     }
     this.activeOuterRadius = this.getCurrentOuterRadius();
     this.updateWorldPositions();
+    GLOBAL_MOD_HOOKS.emit('onSphereBuilt', this, this.descriptor, this.modConfig);
   }
 
   /**
@@ -6617,6 +7266,27 @@ class PearlSphere {
     const nx = pt.x / radius;
     const ny = pt.y / radius;
     const nz = pt.z / radius;
+
+    const customPatId = (this.descriptor && this.descriptor.customPatternId) || String(patternType);
+    const customPat = getCustomPattern(customPatId);
+    if (customPat && typeof customPat.assignColor === 'function') {
+      const unitDirObj = { x: nx, y: ny, z: nz };
+      const cRes = customPat.assignColor({
+        pt,
+        dir: unitDirObj,
+        unitDir: unitDirObj,
+        radius,
+        colors,
+        index,
+        ctx,
+        descriptor: this.descriptor,
+        modConfig: this.modConfig
+      });
+      if (typeof cRes === 'number') {
+        return colors[((Math.floor(cRes) % nColors) + nColors) % nColors];
+      }
+      if (cRes && cRes.id) return cRes;
+    }
 
     switch (patternType) {
       case 1: {
@@ -7938,8 +8608,10 @@ class PearlSphere {
     }
 
     const rawZones = (chosenColorId && byColor.get(chosenColorId)) ? byColor.get(chosenColorId).slice() : [];
-    // ColorBomb.Activate: Enumerable.Take(6) in list order (no sort in ISIL)
-    const zones = rawZones.slice(0, 6);
+    // ColorBomb.Activate: Enumerable.Take(colorBombMaxZones) in list order (default 6 in decompiled ISIL)
+    const obsCfg = (this.modConfig && this.modConfig.obstacles) || OFFICIAL_ATOMIC_CONFIG.obstacles;
+    const maxZones = Math.max(1, Number.isFinite(obsCfg.colorBombMaxZones) ? Math.floor(obsCfg.colorBombMaxZones) : 6);
+    const zones = rawZones.slice(0, maxZones);
     const chosenColorObj = this.colors.find((c) => c.id === chosenColorId) || ballColor || this.colors[0];
     return { targetColor: chosenColorObj, zones };
   }
@@ -8056,13 +8728,17 @@ class PearlSphere {
       return { matched: false, knocked, spawnedMissiles, lightningTargets, shatteredRocks, brokenShields };
     }
 
+    const obsCfg = (this.modConfig && this.modConfig.obstacles) || OFFICIAL_ATOMIC_CONFIG.obstacles;
+
     // 1. Bomb Ball: pops unrocked pearls + RemoveRocksWithinRadius (strips BubbleRock shells to reveal colored pearls!)
     if (boosterType === 'bomb') {
       const basePR = (this.pearls[0] && this.pearls[0].radius) || 0.50;
-      const blastR = Math.max(2.75, basePR * 5.4);
+      const blastMult = Number.isFinite(obsCfg.bombBlastRadiusMultiplier) ? obsCfg.bombBlastRadiusMultiplier : 1.0;
+      const blastR = Math.max(2.75, basePR * 5.4) * blastMult;
       const blastRSq = blastR * blastR;
       // SphereLayer.OnTriggerStay: RemoveRocksWithinRadius(pos, ballType == Bomb ? 3 : 2)
-      const rockR = Math.max(3.0, blastR);
+      const cfgBombRockR = Number.isFinite(obsCfg.rockHitRadiusBomb) ? obsCfg.rockHitRadiusBomb : 3.0;
+      const rockR = Math.max(cfgBombRockR, blastR);
       const rockRSq = rockR * rockR;
       const shieldBlastRSq = Math.pow(blastR * 1.45, 2);
       const origin = { x: hitPearl.worldPos.x, y: hitPearl.worldPos.y, z: hitPearl.worldPos.z };
@@ -8164,23 +8840,26 @@ class PearlSphere {
     // 3. BubbleRock: SphereLayer.OnTriggerStay -> ANY ball touching a rock calls RemoveRocksWithinRadius(pos, 2).
     //    The coloured bubble underneath survives; the ball is consumed without a colour match.
     if (hitPearl.hasRock) {
-      const origin = hitPearl.worldPos;
-      const rockRSq = 2.0 * 2.0;
-      const hitLayer = hitPearl.layer || 0;
-      const touchedZones = new Set();
-      for (let i = 0; i < this.pearls.length; i++) {
-        const p = this.pearls[i];
-        if (!p.alive || !p.hasRock || p.layer > hitLayer) continue;
-        if (distSq3(p.worldPos, origin) <= rockRSq) {
-          p.hasRock = false;
-          p.isRock = false;
-          p.highlight = 1.0;
-          shatteredRocks.push(p);
-          if (p.colorZone) touchedZones.add(p.colorZone);
+      if (obsCfg.normalBallBreaksRock !== false) {
+        const origin = hitPearl.worldPos;
+        const normRockR = Number.isFinite(obsCfg.rockHitRadiusNormal) ? obsCfg.rockHitRadiusNormal : 2.0;
+        const rockRSq = normRockR * normRockR;
+        const hitLayer = hitPearl.layer || 0;
+        const touchedZones = new Set();
+        for (let i = 0; i < this.pearls.length; i++) {
+          const p = this.pearls[i];
+          if (!p.alive || !p.hasRock || p.layer > hitLayer) continue;
+          if (distSq3(p.worldPos, origin) <= rockRSq) {
+            p.hasRock = false;
+            p.isRock = false;
+            p.highlight = 1.0;
+            shatteredRocks.push(p);
+            if (p.colorZone) touchedZones.add(p.colorZone);
+          }
         }
-      }
-      for (const cz of touchedZones) {
-        if (!cz.pearls.some((zp) => zp.alive && zp.hasRock)) cz.hasRock = false;
+        for (const cz of touchedZones) {
+          if (!cz.pearls.some((zp) => zp.alive && zp.hasRock)) cz.hasRock = false;
+        }
       }
       return {
         matched: false,
@@ -8291,13 +8970,16 @@ class PearlSphere {
   isCleared() {
     if (this.starHit) return true;
     const rem = this.clearableTotal - this.knockedClearable;
-    if (this.isSnakeLevel) return rem <= 0;
-    return rem <= 0 || this.getClearRatio() >= 0.975;
+    if (rem <= 0) return true;
+    if (this.isSnakeLevel) return false;
+    const sphCfg = (this.modConfig && this.modConfig.sphere) || OFFICIAL_ATOMIC_CONFIG.sphere;
+    const thresh = Number.isFinite(sphCfg.clearRatioThreshold) ? sphCfg.clearRatioThreshold : 1.0;
+    return thresh < 1.0 && this.getClearRatio() >= thresh;
   }
 
   /**
-   * Recomputes all connected ColorZones, bonusCoin counts, and rock flags across all shells
-   * after interactive 3D brush painting or applying pearlOverrides.
+   * Recomputes all connected ColorZones, ComputeIsPoleZone(20f), innerLayerNeighborZones,
+   * bonusCoin counts, and rock flags across all shells after interactive 3D brush painting or pearlOverrides.
    */
   rebuildAllColorZones() {
     if (this.isSnakeLevel) {
@@ -8308,10 +8990,12 @@ class PearlSphere {
     this.colorZones = [];
     this.layerColorZones = [];
     this.totalBonusCoins = 0;
-    let zoneIdSeq = 1;
+    this._zoneIdCounter = 1;
 
     for (let l = 0; l < this.layerPearls.length; l++) {
       const shellList = this.layerPearls[l];
+      const lDef = (this.descriptor && this.descriptor.layers && this.descriptor.layers[l]) || null;
+      const layerRadius = (lDef && lDef.radius) || (shellList[0] && shellList[0].shellRadius) || 5.0;
       for (let i = 0; i < shellList.length; i++) {
         shellList[i].shellIndex = i;
         shellList[i].colorZone = null;
@@ -8325,13 +9009,9 @@ class PearlSphere {
         if (!start.alive || start.isColorBomb || seen.has(start.id)) continue;
         const comp = [start];
         seen.add(start.id);
-        let sx = 0, sy = 0, sz = 0;
         let head = 0;
         while (head < comp.length) {
           const cur = comp[head++];
-          sx += cur.localPos.x;
-          sy += cur.localPos.y;
-          sz += cur.localPos.z;
           for (let k = 0; k < cur.neighbors.length; k++) {
             const nb = cur.neighbors[k];
             if (nb.alive && !nb.isColorBomb && !seen.has(nb.id) && nb.color.id === start.color.id) {
@@ -8340,36 +9020,14 @@ class PearlSphere {
             }
           }
         }
-        const avg = { x: sx / comp.length, y: sy / comp.length, z: sz / comp.length };
-        let centerPearl = comp[0];
-        let bestD = Infinity;
-        for (let k = 0; k < comp.length; k++) {
-          const d = distSq3(comp[k].localPos, avg);
-          if (d < bestD) {
-            bestD = d;
-            centerPearl = comp[k];
-          }
-        }
-        const hasRock = comp.some((cp) => cp.hasRock);
-        const cz = {
-          id: zoneIdSeq++,
-          layer: l,
-          color: start.color,
-          pearls: comp,
-          centerPearl,
-          isPole: Math.abs(centerPearl.localDir.y) > 0.80,
-          hasRock,
-          targetedByPropeller: false,
-          ionized: 0
-        };
-        for (let k = 0; k < comp.length; k++) {
-          comp[k].colorZone = cz;
-        }
+        const cz = this._createColorZoneObject(l, start.color, comp, layerRadius);
+        cz.hasRock = comp.some((cp) => cp.hasRock);
         shellZones.push(cz);
         this.colorZones.push(cz);
       }
       this.layerColorZones.push(shellZones);
     }
+    this._buildInnerLayerNeighborZones();
   }
 
   /**
@@ -11432,6 +12090,19 @@ const {
   buildCustomLevelDescriptor
 } = require('./levels');
 const { createCamera, dist3, distSq3, sub3, norm3, hexToRgb01 } = require('./math3d');
+const {
+  OFFICIAL_ATOMIC_CONFIG,
+  MOD_PRESETS,
+  MOD_PARAMETER_SCHEMA,
+  createModConfig,
+  mergeModConfig,
+  registerCustomPattern,
+  unregisterCustomPattern,
+  getCustomPattern,
+  listCustomPatterns,
+  createModHookRegistry,
+  GLOBAL_MOD_HOOKS
+} = require('./mod_config');
 const { PearlSphere } = require('./sphere');
 const { WebGLPearlRenderer } = require('./webgl_renderer');
 
@@ -11459,8 +12130,12 @@ class PearlGemEngine {
     this.disableTutorials = !!options.disableTutorials;
     this.onStateChange = options.onStateChange || (() => {});
 
+    // 1:1 Atomic Decompiled Baseline + Modding Configuration & Lifecycle Hooks
+    this.modConfig = createModConfig((options && options.modConfig) || 'official');
+    this.modHooks = createModHookRegistry();
+
     this.activeMaxR = 6.0;
-    this.camera = createCamera(this.width, this.height, this.activeMaxR);
+    this.camera = createCamera(this.width, this.height, this.activeMaxR, this.modConfig);
     this.renderer = new WebGLPearlRenderer(this.canvas, this.ctx);
 
     this.funnelCenter = { x: 0.0, y: -7.90, z: 0.0 };
@@ -11493,7 +12168,7 @@ class PearlGemEngine {
     this.menuTab = 'home'; // 'settings' | 'shop' | 'home' | 'gems' | 'collection'
     this.sceneMode = 'home_planet';
 
-    this.levelDescriptor = resolveLevelDescriptor(this.storage.data.level || 1);
+    this.levelDescriptor = resolveLevelDescriptor(this.storage.data.level || 1, null, null, this.modConfig);
     this.sphere = null;
 
     // Home Planet spin & Cutscene states
@@ -11611,6 +12286,73 @@ class PearlGemEngine {
     return this.flyingBalls.length > 0 ? this.flyingBalls[0] : null;
   }
 
+  // ==================== ATOMIC MODDING & RULE CUSTOMIZATION API ====================
+
+  getModConfig() {
+    return this.modConfig;
+  }
+
+  setModConfig(presetOrPatch, opts = {}) {
+    if (typeof presetOrPatch === 'string' && MOD_PRESETS[presetOrPatch]) {
+      this.modConfig = createModConfig(presetOrPatch, opts.overrides || null);
+    } else if (presetOrPatch && typeof presetOrPatch === 'object') {
+      if (opts.replace || (typeof presetOrPatch.presetId === 'string' && Object.keys(presetOrPatch).length <= 2 && MOD_PRESETS[presetOrPatch.presetId])) {
+        this.modConfig = createModConfig(presetOrPatch);
+      } else {
+        this.modConfig = mergeModConfig(this.modConfig || OFFICIAL_ATOMIC_CONFIG, presetOrPatch);
+      }
+    }
+    if (this.sphere) {
+      this.sphere.modConfig = this.modConfig;
+    }
+    this._syncPlayfieldLayout(this.activeMaxR);
+    if (opts && opts.rebuild && this.mode === 'playing') {
+      if (this.isCustomLevel && this.levelDescriptor) {
+        this.startCustomLevel(this.levelDescriptor, {
+          editorMode: this.editorMode,
+          freezeRotation: this.sphere ? this.sphere.editorFreezeRotation : false
+        });
+      } else if (this.levelDescriptor) {
+        this.startLevel(
+          this.levelDescriptor.globalLevel || 1,
+          this.levelDescriptor.isCustom ? this.levelDescriptor.configName : null
+        );
+      }
+    } else {
+      this._emitUIState();
+    }
+    return this.modConfig;
+  }
+
+  resetModConfig(opts = {}) {
+    return this.setModConfig('official', { replace: true, rebuild: !!(opts && opts.rebuild) });
+  }
+
+  exportModConfigJSON(pretty = true) {
+    return JSON.stringify(this.modConfig, null, pretty ? 2 : 0);
+  }
+
+  importModConfigJSON(jsonStr, opts = {}) {
+    const parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+    return this.setModConfig(parsed, { replace: true, rebuild: !!(opts && opts.rebuild) });
+  }
+
+  registerHook(event, fn) {
+    const offLocal = this.modHooks.on(event, fn);
+    const offGlobal = (event === 'onLevelDescriptorResolved' || event === 'onSphereBuilt')
+      ? GLOBAL_MOD_HOOKS.on(event, fn)
+      : null;
+    return () => {
+      offLocal();
+      if (offGlobal) offGlobal();
+    };
+  }
+
+  clearHooks(event) {
+    this.modHooks.clear(event);
+    GLOBAL_MOD_HOOKS.clear(event);
+  }
+
   setSafeArea(safeTop = 0, safeBottom = 0) {
     this.safeTop = Math.max(0, Number(safeTop) || 0);
     this.safeBottom = Math.max(0, Number(safeBottom) || 0);
@@ -11620,23 +12362,31 @@ class PearlGemEngine {
 
   _syncPlayfieldLayout(maxR = 6.0) {
     this.activeMaxR = Math.max(4.0, Number(maxR) || 6.0);
-    this.camera = createCamera(this.width, this.height, this.activeMaxR);
+    this.camera = createCamera(this.width, this.height, this.activeMaxR, this.modConfig);
     const camPos = this.camera.camPos;
+    const funCfg = (this.modConfig && this.modConfig.funnel) || OFFICIAL_ATOMIC_CONFIG.funnel;
+    const camCfg = (this.modConfig && this.modConfig.camera) || OFFICIAL_ATOMIC_CONFIG.camera;
 
     const safeTopRatio = Math.min(0.11, (this.safeTop || 0) / Math.max(480, this.height || 844));
     const shortScale = Math.min(1.0, Math.max(0.70, ((this.height || 844) - 460) / 300));
     const hudShiftWorld = (0.82 + safeTopRatio * 5.0) * shortScale;
-    this.sphereCenterY = 2.75 - hudShiftWorld;
+    const baseLevelY = Number.isFinite(camCfg.levelCenterY) ? camCfg.levelCenterY : 2.75;
+    this.sphereCenterY = baseLevelY - hudShiftWorld;
     if (this.sphere) {
       this.sphere.center.y = this.sphereCenterY;
       this.sphere.updateWorldPositions();
     }
 
     const tallAnchor = 1.0 + (this.camera.aspectScaleY - 1.0) * 0.72;
-    this.funnelScale = Math.max(1.05, 0.24 * this.activeMaxR + 0.08);
+    const fScaleMin = Number.isFinite(funCfg.scaleMin) ? funCfg.scaleMin : 1.05;
+    const fScaleRadFactor = Number.isFinite(funCfg.scaleRadiusFactor) ? funCfg.scaleRadiusFactor : 0.24;
+    const fScaleOffset = Number.isFinite(funCfg.scaleOffset) ? funCfg.scaleOffset : 0.08;
+    const fYCamFactor = Number.isFinite(funCfg.worldYCamZFactor) ? funCfg.worldYCamZFactor : 0.18;
+    const fYRadFactor = Number.isFinite(funCfg.worldYRadiusFactor) ? funCfg.worldYRadiusFactor : -0.60;
+    this.funnelScale = Math.max(fScaleMin, fScaleRadFactor * this.activeMaxR + fScaleOffset);
     this.funnelCenter = {
       x: 0.0,
-      y: (0.18 * camPos.z - 0.60 * this.activeMaxR) * tallAnchor - hudShiftWorld * 0.64,
+      y: (fYCamFactor * camPos.z + fYRadFactor * this.activeMaxR) * tallAnchor - hudShiftWorld * 0.64,
       z: 0.0
     };
 
@@ -12074,7 +12824,8 @@ class PearlGemEngine {
     }
 
     const globalLvl = Math.max(1, Math.floor(levelNum || this.storage.data.level || 1));
-    const desc = resolveLevelDescriptor(globalLvl, explicitConfigName);
+    const desc = resolveLevelDescriptor(globalLvl, explicitConfigName, null, this.modConfig);
+    this.isCustomLevel = false;
     this.levelDescriptor = desc;
     this.bgTopHex = desc.bgTop;
     this.bgBotHex = desc.bgBot;
@@ -12083,14 +12834,14 @@ class PearlGemEngine {
     this._syncPlayfieldLayout(desc.maxOuterRadius || 6.0);
     this._triggerIris();
 
-    this.sphere = new PearlSphere(desc);
+    this.sphere = new PearlSphere(desc, this.modConfig);
     this.sphere.spawnScale = 0.80;
     if (typeof this.sphereCenterY === 'number') {
       this.sphere.center.y = this.sphereCenterY;
     }
     this.sphere.updateWorldPositions();
 
-    this.shotsLeft = computeDynamicShotBudgetFromSphere(this.sphere, desc);
+    this.shotsLeft = computeDynamicShotBudgetFromSphere(this.sphere, desc, this.modConfig);
     desc.shots = this.shotsLeft;
     this.continuesUsed = 0;
     const minZones = typeof this.sphere.calculateMinimumBallsNeededToFinish === 'function'
@@ -12102,15 +12853,25 @@ class PearlGemEngine {
     }
     // Level.Start (0x023DC174-0x023DC220): coreActivateHits = Min(10, Max(4, CeilToInt((minBalls / 3.5f) * 1.1f)) + 1),
     // and if (patternType == Stripes && coreActivateHits >= 7) coreActivateHits = 6.
+    const starCfg = (this.modConfig && this.modConfig.starStreak) || OFFICIAL_ATOMIC_CONFIG.starStreak;
+    const streakMult = Number.isFinite(starCfg.formulaMultiplier) ? (starCfg.formulaMultiplier / 1.5) : 1.0;
+    const minHitsFloor = Number.isFinite(starCfg.minHits) ? starCfg.minHits : 3;
+    const maxHitsCeil = Number.isFinite(starCfg.maxHits) ? starCfg.maxHits : 12;
+    const stripesCap = Number.isFinite(starCfg.stripesCapHits) ? starCfg.stripesCapHits : 6;
     let cah = Math.min(10, Math.max(4, Math.ceil((minZones / 3.5) * 1.1)) + 1);
-    if (desc.patternType === 2 && cah >= 7) {
-      cah = 6;
+    if (Math.abs(streakMult - 1.0) > 1e-4) {
+      cah = Math.max(minHitsFloor, Math.min(maxHitsCeil, Math.round(cah * streakMult)));
+    }
+    if (desc.patternType === 2 && cah >= stripesCap + 1) {
+      cah = stripesCap;
     }
     this.coreActivateHits = cah;
+    this.starMaxHits = cah;
     // CoreUI.SpawnStreakItem: needs totalHits >= 5; hits = config.streakHit (clamped) or Random in [totalHits*0.5, totalHits)
+    const streakRatio = Number.isFinite(starCfg.streakItemRatio) ? starCfg.streakItemRatio : 0.5;
     this.streakHits = desc.streakHit > 0
       ? Math.min(desc.streakHit, cah - 1)
-      : Math.ceil(cah * 0.5) + Math.floor(Math.random() * Math.max(1, cah - Math.ceil(cah * 0.5)));
+      : Math.max(2, Math.min(cah - 1, Math.ceil(cah * Math.min(0.85, streakRatio))));
     this.pearlsThisRun = 0;
     this.coinsThisRun = 0;
     this._runColorHexes = [];
@@ -12129,7 +12890,7 @@ class PearlGemEngine {
     this.postWinFlow = false;
     this.halfwayGiftBanner = false;
     this._planetAnimPct = null;
-    this.streakRewardType = !desc.noStar && (globalLvl >= 25 || desc.configName === 'Level_2-25_Streak_Item_Tutorial')
+    this.streakRewardType = starCfg.streakItemEnabled !== false && !desc.noStar && (globalLvl >= 25 || desc.configName === 'Level_2-25_Streak_Item_Tutorial')
       ? (['coin', 'rainbow', 'bomb', 'propeller', 'colorbomb'][globalLvl % 5])
       : null;
 
@@ -12241,7 +13002,7 @@ class PearlGemEngine {
     this._syncPlayfieldLayout(desc.maxOuterRadius || 6.0);
     if (!options.silent) this._triggerIris();
 
-    this.sphere = new PearlSphere(desc);
+    this.sphere = new PearlSphere(desc, this.modConfig);
     this.sphere.spawnScale = options.silent ? 1.0 : 0.85;
     if (typeof this.sphereCenterY === 'number') {
       this.sphere.center.y = this.sphereCenterY;
@@ -12380,6 +13141,8 @@ class PearlGemEngine {
    * Any extinct color is immediately replaced via getBestShooterColor with a scale pop animation!
    */
   _replaceShooterBallsIfColorNotExisting() {
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
+    if (shooterCfg.autoReplaceExtinctColor === false) return false;
     if (!this.sphere || this.sphere.isCleared()) return false;
     const q = this.levelDescriptor && this.levelDescriptor.fixedShooterQueue;
     if (Array.isArray(q) && q.length > 0) return false;
@@ -12446,7 +13209,10 @@ class PearlGemEngine {
 
   doubleSwitchBalls() {
     if (this.mode !== 'playing') return false;
-    const cost = this._doubleSwitchCount === 0 ? 0 : 15;
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
+    const firstCost = Number.isFinite(shooterCfg.doubleSwitchFirstCost) ? shooterCfg.doubleSwitchFirstCost : 0;
+    const repeatCost = Number.isFinite(shooterCfg.doubleSwitchRepeatCost) ? shooterCfg.doubleSwitchRepeatCost : 15;
+    const cost = this._doubleSwitchCount === 0 ? firstCost : repeatCost;
     if (cost > 0) {
       if ((this.storage.data.coins || 0) < cost) {
         return false;
@@ -12758,7 +13524,9 @@ class PearlGemEngine {
       dk.hopVel = 1.9;
       dk.wiggle = (i % 2 === 0 ? 1 : -1) * 0.35;
     }
-    this.storage.data.poolPearls = (this.storage.data.poolPearls || 0) + 2;
+    const econCfg = (this.modConfig && this.modConfig.economy) || OFFICIAL_ATOMIC_CONFIG.economy;
+    const duckPearls = Number.isFinite(econCfg.duckTapPearls) ? econCfg.duckTapPearls : 2;
+    this.storage.data.poolPearls = (this.storage.data.poolPearls || 0) + duckPearls;
     this.storage.save();
     this.audio.playSfx('duck_quack');
     this.audio.vibrate('light');
@@ -12772,11 +13540,15 @@ class PearlGemEngine {
   }
 
   _getLaunchSpeed() {
-    return BASE_LAUNCH_SPEED * (Math.abs(this.shootWorldOrigin.z) / 19.1);
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
+    const forceRatio = (Number.isFinite(shooterCfg.shootForce) ? shooterCfg.shootForce : 22.0) / 22.0;
+    return BASE_LAUNCH_SPEED * forceRatio * (Math.abs(this.shootWorldOrigin.z) / 19.1);
   }
 
   _computeBallisticAim(aimX, aimY) {
     if (!this.sphere) return;
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
+    const gravityY = Number.isFinite(shooterCfg.gravityY) ? shooterCfg.gravityY : GRAVITY_Y;
     const ray = this.camera.screenToRay(aimX, aimY);
     const ro = ray.origin;
     const rd = ray.dir;
@@ -12888,28 +13660,30 @@ class PearlGemEngine {
     const flightT = dist / launchSpeed;
     const vx = dx / flightT;
     const vz = dz / flightT;
-    const vy = (dy - 0.5 * GRAVITY_Y * flightT * flightT) / flightT;
+    const vy = (dy - 0.5 * gravityY * flightT * flightT) / flightT;
     this.aimVelocity = { x: vx, y: vy, z: vz };
 
     // BallShooter.ShowTrajectory: trajectoryPointCount = 60, trajectoryTimeStep = 0.025 (2 substeps of 0.0125s),
     // stops when z > center.z + 0.75 * activeOuterRadius
+    const trajPointCount = Math.max(2, Math.floor(shooterCfg.trajectoryPointCount || 60));
+    const trajStep = Number.isFinite(shooterCfg.trajectoryTimeStep) ? shooterCfg.trajectoryTimeStep : 0.025;
     const pts = [];
-    const subDt = 0.0125;
+    const subDt = trajStep * 0.5;
     let px = start.x, py = start.y, pz = start.z;
     let cvx = vx, cvy = vy, cvz = vz;
     let hitPearl = null;
-    const ballR = BALL_RADIUS;
+    const ballR = Number.isFinite(shooterCfg.readyBallRadius) ? shooterCfg.readyBallRadius : BALL_RADIUS;
     const maxZ = center.z + (this.activeMaxR || 6.0) * 0.75;
 
     let hitCoreStar = false;
-    for (let step = 0; step < 60; step++) {
+    for (let step = 0; step < trajPointCount; step++) {
       pts.push({ x: px, y: py, z: pz });
       let collided = false;
       for (let sub = 0; sub < 2; sub++) {
         px += cvx * subDt;
         py += cvy * subDt;
         pz += cvz * subDt;
-        cvy += GRAVITY_Y * subDt;
+        cvy += gravityY * subDt;
         const curPos = { x: px, y: py, z: pz };
 
         if (this.sphere.checkWarsonCollision(curPos, ballR)) {
@@ -12985,16 +13759,20 @@ class PearlGemEngine {
     if (this.reloadTimer > 0) return false;
     if (!this.aimVelocity) return false;
 
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
     const boost = this.activeBooster;
     const isForcedBall = !!boost && this.levelDescriptor.forceBall === boost;
-    if (!isForcedBall && this.shotsLeft <= 0) return false;
+    const specialCostsShot = shooterCfg.specialBallCostsShot !== false;
+    if (!isForcedBall && (!boost || specialCostsShot) && this.shotsLeft <= 0) return false;
 
     if (boost) {
       // BallShooter.ShootBall: special ball -> AddToSpecialBallCount(type, -1) AND ballsLeft -= 1,
-      // unless LevelConfig.forceBallPrefab supplied it (then neither is decremented)
+      // unless LevelConfig.forceBallPrefab supplied it (or modConfig.shooter.specialBallCostsShot === false)
       if (!isForcedBall) {
         this.storage.addSpecialBall(boost, -1);
-        this.shotsLeft = Math.max(0, this.shotsLeft - 1);
+        if (specialCostsShot) {
+          this.shotsLeft = Math.max(0, this.shotsLeft - 1);
+        }
       } else {
         this.levelDescriptor.forceBall = null;
       }
@@ -13004,7 +13782,7 @@ class PearlGemEngine {
       this.audio.playSfx('shoot');
     }
 
-    this.flyingBalls.push({
+    const ballObj = {
       pos: {
         x: this.shootWorldOrigin.x,
         y: this.shootWorldOrigin.y,
@@ -13016,14 +13794,16 @@ class PearlGemEngine {
         z: this.aimVelocity.z
       },
       trail: [],
-      radius: BALL_RADIUS,
+      radius: Number.isFinite(shooterCfg.readyBallRadius) ? shooterCfg.readyBallRadius : BALL_RADIUS,
       targetLayerHint: typeof this._aimTargetLayerHint === 'number' ? this._aimTargetLayerHint : -1,
       color: this.currentBallColor,
       booster: boost
-    });
+    };
+    this.modHooks.emit('onBeforeShoot', ballObj, this);
+    this.flyingBalls.push(ballObj);
 
     this.activeBooster = null;
-    this.reloadTimer = RELOAD_COOLDOWN;
+    this.reloadTimer = Number.isFinite(shooterCfg.reloadDelay) ? shooterCfg.reloadDelay : RELOAD_COOLDOWN;
     this.shooterRecoil = 1.0;
     this.loseGraceTimer = 1.1;
 
@@ -13211,6 +13991,7 @@ class PearlGemEngine {
         this.audio.playSfx('fail_lose');
         this.audio.setBgmMood('lost');
         this.mode = 'continue';
+        this.modHooks.emit('onLevelFail', { reason: 'snake_portal', level: this.levelDescriptor ? this.levelDescriptor.globalLevel : 1 }, this);
         this._emitUIState();
         return;
       }
@@ -13252,6 +14033,7 @@ class PearlGemEngine {
           this.audio.playSfx('fail_lose');
           this.audio.setBgmMood('lost');
           this.mode = 'continue';
+          this.modHooks.emit('onLevelFail', { reason: 'out_of_shots', level: this.levelDescriptor ? this.levelDescriptor.globalLevel : 1 }, this);
           this._emitUIState();
         }
       }
@@ -13260,12 +14042,13 @@ class PearlGemEngine {
 
   _drainPendingBonusCoins() {
     if (!this.sphere || !this.sphere.pendingCoinDrops || this.sphere.pendingCoinDrops.length === 0) return;
+    const econCfg = (this.modConfig && this.modConfig.economy) || OFFICIAL_ATOMIC_CONFIG.economy;
+    const coinVal = Math.max(1, Number.isFinite(econCfg.bonusLevelCoinValue) ? Math.floor(econCfg.bonusLevelCoinValue) : 5);
     while (this.sphere.pendingCoinDrops.length > 0) {
       const cp = this.sphere.pendingCoinDrops.shift();
-      // BonusLevelCoin -> BallsCountdown.EmitCoinsOverTime: 1 coin per collected bonus coin
-      this.coinsThisRun += 1;
-      this.storage.data.coins = (this.storage.data.coins || 0) + 1;
-      this._spawnFlyingRewardFromWorld('coin', cp.worldPos, '+1');
+      this.coinsThisRun += coinVal;
+      this.storage.data.coins = (this.storage.data.coins || 0) + coinVal;
+      this._spawnFlyingRewardFromWorld('coin', cp.worldPos, `+${coinVal}`);
     }
     this.storage.save();
     this.audio.playSfx('coin');
@@ -13782,6 +14565,11 @@ class PearlGemEngine {
 
   _stepFlyingBalls(dt) {
     if (!this.sphere) return;
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
+    const obsCfg = (this.modConfig && this.modConfig.obstacles) || OFFICIAL_ATOMIC_CONFIG.obstacles;
+    const gravityY = Number.isFinite(shooterCfg.gravityY) ? shooterCfg.gravityY : GRAVITY_Y;
+    const propBallCount = Number.isFinite(obsCfg.propellerBallMissileCount) ? Math.max(1, Math.round(obsCfg.propellerBallMissileCount)) : 3;
+    const propPearlCount = Number.isFinite(obsCfg.propellerPearlMissileCount) ? Math.max(1, Math.round(obsCfg.propellerPearlMissileCount)) : 1;
     const subSteps = 4;
     const subDt = dt / subSteps;
     const maxZ = (this.activeMaxR || 6.0) + 8.0;
@@ -13796,7 +14584,7 @@ class PearlGemEngine {
         fb.pos.x += fb.vel.x * subDt;
         fb.pos.y += fb.vel.y * subDt;
         fb.pos.z += fb.vel.z * subDt;
-        fb.vel.y += GRAVITY_Y * subDt;
+        fb.vel.y += gravityY * subDt;
 
         if (s === 0 && fb.trail) {
           fb.trail.push({ x: fb.pos.x, y: fb.pos.y, z: fb.pos.z });
@@ -13853,7 +14641,8 @@ class PearlGemEngine {
 
         const sh = this.sphere.checkShieldCollision(fb.pos, fb.radius);
         if (sh) {
-          const res = this.sphere.damageShield(sh, fb.booster === 'bomb');
+          const canBreakMetal = fb.booster === 'bomb' || obsCfg.metalShieldBombOnly === false;
+          const res = this.sphere.damageShield(sh, canBreakMetal);
           if (fb.booster === 'bomb') {
             this._spawnShieldShards(sh);
             this.audio.playSfx('bomb_poof');
@@ -13922,6 +14711,8 @@ class PearlGemEngine {
         const hitPearl = this._findCollidingPearl(fb.pos, fb.radius, fb.targetLayerHint);
         if (hitPearl) {
           const res = this.sphere.resolveHit(hitPearl, fb.color, fb.booster, { deferColorBomb: true });
+          this.modHooks.emit('onAfterHit', res, this);
+          GLOBAL_MOD_HOOKS.emit('onAfterHit', res, this);
           if (res.matched) {
             if (res.shatteredRocks && res.shatteredRocks.length > 0) {
               this._spawnRockDebris(res.shatteredRocks);
@@ -13956,14 +14747,14 @@ class PearlGemEngine {
               this._completeTutorial('color_bomb');
             }
 
-            // Fired Propeller Booster spawns 3 missiles; popped Propeller Pearls spawn 1 missile each!
+            // Fired Propeller Booster spawns propBallCount (3) missiles; popped Propeller Pearls spawn propPearlCount (1) missile each!
             if (fb.booster === 'propeller') {
-              this._spawnPropellerMissiles(hitPearl.worldPos, 3);
+              this._spawnPropellerMissiles(hitPearl.worldPos, propBallCount);
               this._completeTutorial('propeller_ball');
             }
             if (res.spawnedMissiles && res.spawnedMissiles.length > 0) {
               for (let m = 0; m < res.spawnedMissiles.length; m++) {
-                this._spawnPropellerMissiles(res.spawnedMissiles[m].worldPos, 1);
+                this._spawnPropellerMissiles(res.spawnedMissiles[m].worldPos, propPearlCount);
               }
               this._completeTutorial('propeller_pearl');
             }
@@ -14010,6 +14801,8 @@ class PearlGemEngine {
   _findCollidingPearl(pos, ballR, targetLayerHint = -1) {
     const center = this.sphere.center;
     const sc = this.sphere.spawnScale || 1.0;
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
+    const aimHitbox = Number.isFinite(shooterCfg.aimHitboxWidth) ? shooterCfg.aimHitboxWidth : AIM_HITBOX_WIDTH;
 
     if (this.sphere.isSnakeLevel) {
       const arr = this.sphere.layerPearls[0] || [];
@@ -14053,7 +14846,7 @@ class PearlGemEngine {
       const isOuterPassThrough =
         (typeof targetLayerHint === 'number' && targetLayerHint > l) ||
         (this.sphere.starActivated && !this.sphere.starHit && this.sphere.layerAliveCounts && this.sphere.layerAliveCounts[l] < arr.length);
-      const effBallR = isOuterPassThrough ? Math.min(ballR, AIM_HITBOX_WIDTH) : ballR;
+      const effBallR = isOuterPassThrough ? Math.min(ballR, aimHitbox) : ballR;
 
       for (let i = 0; i < arr.length; i++) {
         const p = arr[i];
@@ -14144,7 +14937,12 @@ class PearlGemEngine {
     this.comboCount = 0;
     this.comboText = '';
     this._comboTimer = 0;
-    if (!isWrongHit) {
+    const starCfg = (this.modConfig && this.modConfig.starStreak) || OFFICIAL_ATOMIC_CONFIG.starStreak;
+    if (!isWrongHit && !starCfg.resetOnEmptyMiss) {
+      this._emitUIState();
+      return;
+    }
+    if (isWrongHit && starCfg.resetOnWrongColorHit === false) {
       this._emitUIState();
       return;
     }
@@ -14172,6 +14970,8 @@ class PearlGemEngine {
     this._spawnPopSparkles(this.sphere.center, [1.0, 0.88, 0.24], 20);
     this._spawnShockwave(this.sphere.center, 3.6, [1.0, 0.88, 0.24], 1.0);
     this.audio.playSfx('star_activated');
+    this.modHooks.emit('onStarStreakFull', { maxStarHits }, this);
+    GLOBAL_MOD_HOOKS.emit('onStarStreakFull', { maxStarHits }, this);
     this._emitUIState();
   }
 
@@ -14428,6 +15228,8 @@ class PearlGemEngine {
 
     const modeTag = this.levelDescriptor.modeTag;
     const isCampaign = !modeTag || modeTag === 'campaign';
+    const econCfg = (this.modConfig && this.modConfig.economy) || OFFICIAL_ATOMIC_CONFIG.economy;
+    const grantPearls = isCampaign || econCfg.eventLevelsGrantPearls === true;
 
     this._winCountdownAccum = 0;
     this._winTick = 0;
@@ -14436,15 +15238,15 @@ class PearlGemEngine {
     this._winDisplayPearls = basePearlsBeforeCountdown;
     this._winDisplayCoins = baseCoinBeforeCountdown;
     this._winBarPct = Math.min(100, (prevForgeTotal / forgeTarget) * 100);
-    this._winBarTargetPct = isCampaign
+    this._winBarTargetPct = grantPearls
       ? Math.min(100, ((prevForgeTotal + totalPearlsEarned) / forgeTarget) * 100)
       : this._winBarPct;
-    this.postWinBatchPearls = isCampaign ? totalPearlsEarned : 0;
+    this.postWinBatchPearls = grantPearls ? totalPearlsEarned : 0;
     this.postWinBatchDoubled = false;
 
     // GameManager.LevelCleared: only normal campaign levels add pearls to GemCreator;
-    // Daily / GemQuest / HolidaySparkle events only advance event stage & award coins.
-    if (isCampaign) {
+    // Daily / GemQuest / HolidaySparkle events only advance event stage & award coins (unless eventLevelsGrantPearls is enabled via mod).
+    if (grantPearls) {
       this.storage.addCollectedPearls(totalPearlsEarned, this._runColorHexes);
     }
     this.storage.data.coins = (this.storage.data.coins || 0) + coinReward;
@@ -14509,6 +15311,8 @@ class PearlGemEngine {
     this._spawnWinFireworkBurst();
     this.audio.playSfx('win');
     this.audio.vibrate('heavy');
+    this.modHooks.emit('onLevelWin', this.lastWinSummary, this);
+    GLOBAL_MOD_HOOKS.emit('onLevelWin', this.lastWinSummary, this);
     this._emitUIState();
   }
 
@@ -14587,12 +15391,17 @@ class PearlGemEngine {
 
   // ContinueScreen.Setup: price = round(basePrice * 2^continuesUsed)
   getContinueCostCoins() {
-    return Math.round(CONTINUE_COST_COINS * Math.pow(2, this.continuesUsed || 0));
+    const econCfg = (this.modConfig && this.modConfig.economy) || OFFICIAL_ATOMIC_CONFIG.economy;
+    const basePrice = Number.isFinite(econCfg.continueBasePrice) ? econCfg.continueBasePrice : CONTINUE_COST_COINS;
+    const expBase = Number.isFinite(econCfg.continuePriceExponent) ? econCfg.continuePriceExponent : 2;
+    return Math.round(basePrice * Math.pow(expBase, this.continuesUsed || 0));
   }
 
   _resumeAfterContinue() {
+    const econCfg = (this.modConfig && this.modConfig.economy) || OFFICIAL_ATOMIC_CONFIG.economy;
+    const extraBalls = Number.isFinite(econCfg.continueExtraBalls) ? econCfg.continueExtraBalls : CONTINUE_EXTRA_SHOTS;
     this.continuesUsed = (this.continuesUsed || 0) + 1;
-    this.shotsLeft += CONTINUE_EXTRA_SHOTS;
+    this.shotsLeft += extraBalls;
     this.loseGraceTimer = 1.1;
     if (this.sphere && this.sphere.isSnakeLevel && this.sphere.snakeReachedEnd) {
       this.sphere.snakeProgress = Math.max(0.20, this.sphere.snakeProgress - 0.36);
@@ -15546,6 +16355,11 @@ module.exports = { PearlGemEngine };
 
 });
 
+      const {
+        OFFICIAL_ATOMIC_CONFIG,
+        MOD_PRESETS,
+        MOD_PARAMETER_SCHEMA
+      } = __require('./mod_config');
       const {
         WORLDS,
         LEVEL_CONFIGS,
@@ -18504,13 +19318,87 @@ module.exports = { PearlGemEngine };
               </div>
             </div>
           `;
+        } else if (tab === 'mod') {
+          const curMod = engine.getModConfig ? engine.getModConfig() : OFFICIAL_ATOMIC_CONFIG;
+          const presetEntries = Object.keys(MOD_PRESETS).map((pKey) => {
+            const pr = MOD_PRESETS[pKey];
+            const isAct = curMod.presetId === pKey;
+            return `
+              <div class="ed-chip ${isAct ? 'active' : ''}" data-ed-act="apply_mod_preset" data-preset="${esc(pKey)}">
+                <div>${esc(pr.nameZh)}</div>
+                <div style="font-size:12px;opacity:0.75;font-weight:500;">${esc(pr.descZh)}</div>
+              </div>
+            `;
+          }).join('');
+
+          const groups = {};
+          for (let i = 0; i < MOD_PARAMETER_SCHEMA.length; i++) {
+            const item = MOD_PARAMETER_SCHEMA[i];
+            if (!groups[item.group]) groups[item.group] = [];
+            groups[item.group].push(item);
+          }
+
+          const groupSections = Object.keys(groups).map((gName) => {
+            const items = groups[gName];
+            const rowsHtml = items.map((item) => {
+              const [sec, key] = item.path.split('.');
+              const curVal = curMod[sec] && curMod[sec][key] !== undefined ? curMod[sec][key] : OFFICIAL_ATOMIC_CONFIG[sec][key];
+              const offVal = OFFICIAL_ATOMIC_CONFIG[sec][key];
+              const isModified = curVal !== offVal;
+              if (item.type === 'boolean') {
+                return `
+                  <label class="ed-row" style="cursor:pointer;">
+                    <span class="ed-label">${esc(item.labelZh)} ${isModified ? '<b style="color:#ffd452;">(已魔改)</b>' : ''}</span>
+                    <input type="checkbox" ${curVal ? 'checked' : ''} data-mod-path="${esc(item.path)}" style="width:18px;height:18px;" />
+                  </label>
+                `;
+              }
+              return `
+                <div class="ed-field">
+                  <span class="ed-label">${esc(item.labelZh)}: <b>${curVal}${esc(item.unit || '')}</b> <span style="opacity:0.68;">(原版:${offVal})</span></span>
+                  <input type="range" class="ed-range" min="${item.min}" max="${item.max}" step="${item.step}" value="${curVal}" data-mod-path="${esc(item.path)}" />
+                </div>
+              `;
+            }).join('');
+            return `
+              <div class="ed-sec">
+                <div class="ed-sec-head">
+                  <span class="ed-sec-title">⚙️ ${esc(gName)} · 原子层参数</span>
+                </div>
+                <div class="ed-grid-2">${rowsHtml}</div>
+              </div>
+            `;
+          }).join('');
+
+          const modJsonDiff = engine.exportModConfigJSON ? engine.exportModConfigJSON({ diffOnly: true }) : '{}';
+
+          bodyHtml = `
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">🧬 一键切换魔改规则预设 (当前: ${esc(curMod.presetNameZh || '1:1 原版原子默认')})</span>
+                <button type="button" class="ed-btn warn" data-ed-act="reset_mod_official">🔄 恢复 1:1 原版默认</button>
+              </div>
+              <div class="ed-grid-2">${presetEntries}</div>
+            </div>
+            ${groupSections}
+            <div class="ed-sec">
+              <div class="ed-sec-head">
+                <span class="ed-sec-title">📋 魔改补丁配置导出与导入 (支持 setModConfig / JSON 热加载)</span>
+              </div>
+              <textarea id="edModJsonTextarea" class="ed-textarea" spellcheck="false">${esc(modJsonDiff)}</textarea>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="ed-btn primary" data-ed-act="copy_mod_json">📋 复制魔改 JSON 补丁</button>
+                <button type="button" class="ed-btn success" data-ed-act="import_mod_json">📥 应用文本框中的魔改 JSON</button>
+              </div>
+            </div>
+          `;
         }
 
         editorDock.innerHTML = `
           <div class="ed-header">
             <div class="ed-title-box">
               <h2 class="ed-title">🛠️ 珍珠宝石 3D 关卡编辑器</h2>
-              <p class="ed-sub">实时 WebGL 球面点涂 · 剖层透视 · 11种排布 · 障碍与发球队列全配置</p>
+              <p class="ed-sub">实时 WebGL 球面点涂 · 剖层透视 · 11种排布 · 1:1原子参数与魔改工坊</p>
             </div>
             <div class="ed-head-actions">
               <button type="button" class="ed-btn ${editorState.interactionMode === 'play' ? 'warn' : 'success'}" data-ed-act="toggle_play">
@@ -18544,6 +19432,7 @@ module.exports = { PearlGemEngine };
             <button type="button" class="ed-tab ${tab === 'style' ? 'active' : ''}" data-ed-tab="style">🎨 样式与球层</button>
             <button type="button" class="ed-tab ${tab === 'obstacles' ? 'active' : ''}" data-ed-tab="obstacles">🛡️ 障碍与模式</button>
             <button type="button" class="ed-tab ${tab === 'balls' ? 'active' : ''}" data-ed-tab="balls">🎱 本关球与规则</button>
+            <button type="button" class="ed-tab ${tab === 'mod' ? 'active' : ''}" data-ed-tab="mod">🧬 魔改规则</button>
             <button type="button" class="ed-tab ${tab === 'pack' ? 'active' : ''}" data-ed-tab="pack">📦 模板与导出</button>
           </div>
 
@@ -18725,6 +19614,31 @@ module.exports = { PearlGemEngine };
           } catch (_) {
             showToast('生成分享链接失败');
           }
+        } else if (act === 'apply_mod_preset') {
+          const presetKey = actBtn.getAttribute('data-preset') || 'official';
+          engine.setModConfig(presetKey, { rebuildSphere: true });
+          applyEditorSpecToEngine(true);
+          const pr = MOD_PRESETS[presetKey];
+          showToast(`🧬 已切换魔改预设：${pr ? pr.nameZh : presetKey}`);
+        } else if (act === 'reset_mod_official') {
+          engine.resetModConfig({ rebuildSphere: true });
+          applyEditorSpecToEngine(true);
+          showToast('🔄 已恢复 1:1 原版原子默认参数！');
+        } else if (act === 'copy_mod_json') {
+          const ta = document.getElementById('edModJsonTextarea');
+          const txt = ta ? ta.value : engine.exportModConfigJSON({ diffOnly: true });
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(() => showToast('📋 魔改 JSON 补丁已复制！'));
+          }
+        } else if (act === 'import_mod_json') {
+          const ta = document.getElementById('edModJsonTextarea');
+          if (!ta || !ta.value.trim()) return;
+          if (engine.importModConfigJSON(ta.value.trim(), { rebuildSphere: true })) {
+            applyEditorSpecToEngine(true);
+            showToast('📥 已应用魔改 JSON 配置！');
+          } else {
+            showToast('导入失败：魔改 JSON 格式有误');
+          }
         }
       });
 
@@ -18758,6 +19672,29 @@ module.exports = { PearlGemEngine };
       editorDock?.addEventListener('change', (e) => {
         const el = e.target;
         const s = editorState.spec;
+        const modPath = el.getAttribute('data-mod-path');
+        if (modPath) {
+          const [sec, k] = modPath.split('.');
+          const val = el.type === 'checkbox' ? !!el.checked : Number(el.value);
+          const cur = engine.getModConfig();
+          const nextPatch = {
+            ...cur,
+            presetId: 'custom',
+            presetNameZh: '自定义魔改参数',
+            [sec]: {
+              ...(cur[sec] || {}),
+              [k]: val
+            }
+          };
+          const needsRebuild = sec === 'sphere' || sec === 'shotBudget';
+          engine.setModConfig(nextPatch, { rebuildSphere: needsRebuild });
+          if (needsRebuild) {
+            applyEditorSpecToEngine(true);
+          } else {
+            renderEditorDock();
+          }
+          return;
+        }
         const boosterKey = el.getAttribute('data-ed-booster');
         if (boosterKey) {
           s.initialBoosters[boosterKey] = Number(el.value || 0);
