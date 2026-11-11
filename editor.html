@@ -77,17 +77,17 @@
   height: 100%;
 }
 
-/* ==================== 左上角金币栏（Coin_UI.png） ==================== */
+/* ==================== 左上角金币栏（Coin_UI.png 200x86 = 2.326:1 原生比例） ==================== */
 .pg-top-coins {
   position: absolute;
   left: 12px;
   top: var(--coin-top);
-  width: 124px;
-  height: 46px;
+  width: 112px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px 2px 44px;
+  padding: 0 10px 2px 41px;
   box-sizing: border-box;
   z-index: 25;
 }
@@ -104,19 +104,19 @@
   position: relative;
   z-index: 2;
   color: #3b3222;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 900;
   line-height: 1;
 }
 
-/* ==================== 主页星球净化进度条（对齐原版 PlanetProgressBar 内腔像素边界） ==================== */
+/* ==================== 主页星球净化进度条（对齐原版 PlanetProgressBar 360x78 = 4.615:1 原生比例） ==================== */
 .pg-planet-bar-wrap {
   position: absolute;
-  top: calc(var(--menu-header-top) + 12px);
+  top: calc(var(--menu-header-top) + 10px);
   left: 50%;
   transform: translateX(-50%);
-  width: 80%;
-  max-width: 312px;
+  width: 268px;
+  max-width: calc(100% - 88px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -143,8 +143,9 @@
 
 .pg-planet-bar-box {
   position: relative;
-  width: 100%;
-  height: 44px;
+  width: 258px;
+  max-width: 100%;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -212,10 +213,10 @@
 
 .pg-planet-gem-icon {
   position: absolute;
-  right: -10px;
-  top: -8px;
-  width: 44px;
-  height: 60px;
+  right: -12px;
+  top: -4px;
+  width: 46px;
+  height: 62px;
   flex-shrink: 0;
   z-index: 4;
 }
@@ -386,8 +387,8 @@
 
 .pg-play-btn {
   position: relative;
-  width: 204px;
-  height: 58px;
+  width: 196px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -515,7 +516,7 @@
   border: 2px solid #ffffff;
 }
 
-/* ==================== 菜单二级面板（严格在 settings_window.png 10%..90% 米白安全框内） ==================== */
+/* ==================== 原版三段式无缝窗口结构（深海蓝顶栏 + 纯暖米白中腹 + 深海蓝厚底边） ==================== */
 .pg-tab-panel {
   position: absolute;
   left: 12px;
@@ -534,38 +535,78 @@
   max-width: 356px;
   height: 100%;
   max-height: 460px;
+  background: #e9dea0;
+  border: 3px solid #004774;
+  border-bottom-width: 24px;
+  border-radius: 16px;
+  box-shadow:
+    0 14px 32px rgba(2, 12, 34, 0.56),
+    inset 0 4px 0 #bdb482,
+    inset 0 -4px 0 #bdb482;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-.pg-window-bg {
+/* 设置面板专享：严格锁定 settings_window.png 原生 332x400 (0.83:1) 像素比例，零拉伸零重缝 */
+.pg-settings-win {
+  width: 332px;
+  max-width: 100%;
+  height: 400px;
+  max-height: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(2, 12, 34, 0.56);
+  overflow: hidden;
+}
+
+.pg-settings-win-bg {
   position: absolute;
   left: 0;
   top: 0;
   width: 100%;
   height: 100%;
+  z-index: 0;
 }
 
-/* 顶部金边皇家蓝标题铭牌：精确居中在 settings_window.png 顶部 0..9.5% 深蓝横条上 */
+.pg-window-bg {
+  display: none;
+}
+
+/* 顶部无缝一体顶栏：对齐原版 #004774 深海蓝顶条 + #bdb482 内凹斜角线，彻底杜绝接缝错位 */
 .pg-card-ribbon {
-  position: absolute;
-  left: 50%;
-  top: 4.8%;
-  transform: translate(-50%, -50%);
-  height: 34px;
-  padding: 0 22px;
-  border-radius: 17px;
-  background: linear-gradient(180deg, #2596ff, #0c5ec0);
-  border: 2.5px solid #e2d287;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.32);
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  width: 100%;
+  height: 40px;
+  padding: 0 40px;
+  box-sizing: border-box;
+  border-radius: 12px 12px 0 0;
+  background: #004774;
+  border: none;
+  border-bottom: 3px solid #bdb482;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   z-index: 4;
   white-space: nowrap;
 }
 
+.pg-settings-win .pg-card-ribbon {
+  height: 38px;
+  background: transparent;
+  border-bottom: none;
+  border-radius: 0;
+}
+
 .pg-ribbon-gold {
-  background: linear-gradient(180deg, #ffe359, #f5a623);
-  border-color: #fff6c4;
+  background: linear-gradient(180deg, #ffe566 0%, #f3a61c 100%);
+  border-bottom: 3px solid #c4a035;
+  box-shadow: inset 0 2px 0 rgba(255, 252, 214, 0.72);
 }
 
 .pg-card-ribbon-txt {
@@ -576,13 +617,14 @@
   text-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
 }
 
-/* 面板正文区：配合 max-height: 460px，上下 54px/50px > 9.5% 高度，严格落在纯米白安全区内 */
 .pg-card-body {
   position: relative;
   z-index: 2;
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 100%;
-  padding: 54px 18px 50px;
+  height: auto;
+  padding: 14px 18px 14px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -895,7 +937,7 @@
 .pg-med-btn {
   position: relative;
   width: 134px;
-  height: 44px;
+  height: 45px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1059,12 +1101,14 @@
 }
 
 .pg-gem-locked {
-  border-color: #c8b68c;
-  opacity: 0.90;
+  background: linear-gradient(180deg, #efe3b8 0%, #dcd0a0 100%);
+  border-color: #b7a26c;
+  box-shadow: inset 0 1px 0 rgba(255, 252, 236, 0.72);
+  opacity: 0.94;
 }
 
 .pg-slot-offer-bg {
-  border-radius: 12px;
+  display: none;
 }
 
 .pg-gem-code {
@@ -1186,7 +1230,7 @@
   white-space: nowrap;
 }
 
-/* ==================== 商店面板（精确匹配原版双层胶囊 66% / 30% 分区） ==================== */
+/* ==================== 商店面板（严格匹配 capsule_big 360x192 = 1.875:1 & capsule_small 320x82 = 3.90:1 原生比例） ==================== */
 .pg-shop-panel {
   flex-direction: column;
   gap: 8px;
@@ -1194,7 +1238,7 @@
 
 .pg-shop-topbar {
   width: 100%;
-  max-width: 358px;
+  max-width: 330px;
   height: 36px;
   padding: 0 14px;
   box-sizing: border-box;
@@ -1216,7 +1260,7 @@
 
 .pg-shop-scroll {
   width: 100%;
-  max-width: 358px;
+  max-width: 330px;
   flex: 1;
   min-height: 0;
 }
@@ -1228,11 +1272,11 @@
 }
 
 .pg-capsule-tall {
-  height: 144px;
+  height: 176px;
 }
 
 .pg-capsule-sm {
-  height: 76px;
+  height: 84px;
 }
 
 .pg-capsule-bg {
@@ -1248,16 +1292,16 @@
   z-index: 2;
   width: 100%;
   height: 100%;
-  padding: 8px 14px 7px;
+  padding: 12px 18px 10px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
-/* 胶囊上半 66% 皇家蓝区 */
+/* 胶囊上半 70% 皇家蓝区（零跨缝） */
 .pg-capsule-top-zone {
-  height: 80px;
+  height: 102px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1269,13 +1313,13 @@
 .pg-capsule-icons {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .pg-capsule-ball-icon {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
 }
 
@@ -1287,9 +1331,9 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.58);
 }
 
-/* 胶囊下半 30% 粉/米色底栏区 */
+/* 胶囊下半 28% 粉/米色底栏区（零跨缝） */
 .pg-capsule-bot-zone {
-  height: 38px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1321,7 +1365,7 @@
   z-index: 2;
   width: 100%;
   height: 100%;
-  padding: 8px 14px;
+  padding: 10px 16px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -1338,8 +1382,8 @@
 }
 
 .pg-capsule-sm-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
 }
 
@@ -1364,10 +1408,11 @@
   white-space: nowrap;
 }
 
+/* 对齐 btn_buy_small.png (142x78 = 1.82:1) 原生比例 */
 .pg-capsule-buy {
   position: relative;
-  width: 88px;
-  height: 34px;
+  width: 78px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1398,10 +1443,14 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.58);
 }
 
-/* ==================== 设置面板与拨动开关 ==================== */
+/* ==================== 设置面板与原版四层精灵拨动开关（border 190x89 / back 170x63 / green 110x74 / knob 100x81） ==================== */
 .pg-settings-body {
   justify-content: flex-start;
   gap: 8px;
+}
+
+.pg-settings-win .pg-settings-body {
+  padding: 12px 18px 44px;
 }
 
 .pg-setting-row {
@@ -1421,17 +1470,27 @@
 
 .pg-toggle-box {
   position: relative;
-  width: 82px;
+  width: 78px;
   height: 36px;
   flex-shrink: 0;
 }
 
 .pg-toggle-back {
   position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 76px;
-  height: 30px;
+  left: 5px;
+  top: 5px;
+  width: 68px;
+  height: 26px;
+  z-index: 1;
+}
+
+.pg-toggle-green {
+  position: absolute;
+  left: 4px;
+  top: 3.5px;
+  width: 43px;
+  height: 29px;
+  z-index: 2;
 }
 
 .pg-toggle-border {
@@ -1440,6 +1499,7 @@
   top: 0;
   width: 100%;
   height: 100%;
+  z-index: 4;
 }
 
 .pg-toggle-state {
@@ -1449,33 +1509,33 @@
   color: #ffffff;
   font-size: 12px;
   font-weight: 900;
-  z-index: 2;
+  z-index: 3;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
 .pg-state-left {
-  left: 14px;
+  left: 13px;
 }
 
 .pg-state-right {
-  right: 14px;
+  right: 13px;
 }
 
 .pg-toggle-knob {
   position: absolute;
-  top: 3px;
-  width: 32px;
-  height: 30px;
-  z-index: 3;
+  top: 4px;
+  width: 35px;
+  height: 28px;
+  z-index: 5;
   transition: left 0.16s ease;
 }
 
 .pg-knob-on {
-  left: 45px;
+  left: 39px;
 }
 
 .pg-knob-off {
-  left: 5px;
+  left: 4px;
 }
 
 .pg-stage-divider {
@@ -1539,8 +1599,8 @@
 
 .pg-promo-btn {
   position: relative;
-  width: 118px;
-  height: 34px;
+  width: 108px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1854,12 +1914,12 @@
 .pg-star-alert {
   position: absolute;
   left: 50%;
-  top: calc(88px + var(--hud-safe-top));
+  top: calc(73px + var(--hud-safe-top));
   transform: translateX(-50%);
-  width: calc(100% - 112px);
-  max-width: 278px;
-  height: 38px;
-  padding: 0 10px;
+  width: 236px;
+  max-width: calc(100% - 104px);
+  height: 70px;
+  padding: 6px 14px 10px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -1879,9 +1939,10 @@
   position: relative;
   z-index: 2;
   color: #fff6a8;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
-  white-space: nowrap;
+  text-align: center;
+  line-height: 1.28;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.68);
 }
 
@@ -2237,7 +2298,7 @@
 }
 
 @keyframes pgWinSlideUp {
-  0% { opacity: 0; transform: translateY(18px) scale(0.96); }
+  0% { opacity: 0.92; transform: translateY(14px) scale(0.97); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -2253,7 +2314,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 26px;
+  gap: 22px;
   padding: 20px 16px calc(24px + var(--safe-bottom));
   box-sizing: border-box;
   z-index: 36;
@@ -2266,7 +2327,10 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  animation: pgWinSlideUp 0.26s ease-out;
+}
+
+.pg-win-progress-wrap.pg-anim-enter {
+  animation: pgWinSlideUp 0.24s ease-out;
 }
 
 .pg-win-banner {
@@ -2292,7 +2356,8 @@
 }
 
 .pg-win-bar-box {
-  width: 94%;
+  width: 258px;
+  max-width: 94%;
 }
 
 .pg-win-bar-fill {
@@ -2303,27 +2368,39 @@
   position: relative;
   width: 100%;
   max-width: 336px;
-  min-height: 298px;
+  min-height: 270px;
+  background: #e9dea0;
+  border: 3px solid #004774;
+  border-bottom-width: 24px;
+  border-radius: 16px;
+  box-shadow:
+    0 14px 32px rgba(2, 12, 34, 0.58),
+    inset 0 4px 0 #bdb482,
+    inset 0 -4px 0 #bdb482;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 @keyframes pgModalSwing {
-  0% { opacity: 0; transform: translateY(-20px) rotate(-2.5deg); }
-  55% { opacity: 1; transform: translateY(3px) rotate(1.4deg); }
+  0% { opacity: 0.92; transform: translateY(-14px) rotate(-1.8deg); }
+  55% { opacity: 1; transform: translateY(2px) rotate(1.0deg); }
   100% { opacity: 1; transform: translateY(0) rotate(0deg); }
 }
 
 .pg-swing-modal {
   transform-origin: 50% -28px;
-  animation: pgModalSwing 0.36s ease-out;
+}
+
+.pg-swing-modal.pg-anim-enter {
+  animation: pgModalSwing 0.30s ease-out;
 }
 
 .pg-swing-chain {
   position: absolute;
   top: -34px;
   width: 8px;
-  height: 40px;
+  height: 36px;
   border-radius: 4px;
   background: repeating-linear-gradient(
     180deg,
@@ -2334,7 +2411,7 @@
   );
   border: 1.5px solid #493106;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.38);
-  z-index: 1;
+  z-index: 0;
 }
 
 .pg-chain-l {
@@ -2346,8 +2423,11 @@
 }
 
 .pg-win-card {
-  min-height: 308px;
-  animation: pgWinSlideUp 0.30s ease-out;
+  min-height: 292px;
+}
+
+.pg-win-card.pg-anim-enter {
+  animation: pgWinSlideUp 0.26s ease-out;
 }
 
 .pg-modal-body {
@@ -2355,18 +2435,48 @@
   z-index: 2;
   flex: 1;
   width: 100%;
-  padding: 50px 20px 44px;
+  padding: 16px 20px 16px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
 .pg-win-modal-body {
-  padding: 48px 18px 42px;
-  gap: 8px;
+  padding: 14px 18px 14px;
+  gap: 10px;
+}
+
+.pg-continue-offer {
+  position: relative;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pg-continue-offer-ic {
+  position: relative;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.pg-continue-offer-txt {
+  position: relative;
+  z-index: 2;
+  color: #362915;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.32;
+  text-align: left;
 }
 
 .pg-modal-mid,
@@ -2882,19 +2992,32 @@
 
 /* ==================== 矮屏 / 手机浏览器内嵌视口自适应（如 393x590） ==================== */
 @media (max-height: 700px) {
+  .pg-top-coins {
+    width: 100px;
+    height: 43px;
+    padding: 0 8px 2px 37px;
+  }
+  .pg-coin-bar-val {
+    font-size: 16px;
+  }
   .pg-planet-bar-wrap {
     top: calc(var(--menu-header-top) + 6px);
+    width: 232px;
   }
   .pg-planet-bar-box {
-    height: 40px;
+    width: 222px;
+    height: 48px;
+  }
+  .pg-win-bar-box {
+    width: 222px;
   }
   .pg-planet-bar-count {
-    font-size: 17px;
+    font-size: 16px;
   }
   .pg-planet-gem-icon {
     width: 40px;
     height: 54px;
-    top: -7px;
+    top: -3px;
   }
   .pg-bottom-nav {
     height: calc(70px + var(--safe-bottom));
@@ -2934,17 +3057,31 @@
   .pg-panel-card {
     max-height: 420px;
   }
+  .pg-settings-win {
+    width: 306px;
+    height: 368px;
+  }
+  .pg-card-ribbon {
+    height: 38px;
+  }
+  .pg-settings-win .pg-card-ribbon {
+    height: 35px;
+  }
   .pg-card-body {
-    padding: 44px 16px 38px;
+    padding: 12px 16px 12px;
   }
   .pg-settings-body {
     gap: 5px;
+  }
+  .pg-settings-win .pg-settings-body {
+    padding: 10px 16px 38px;
   }
   .pg-stage-scroll {
     min-height: 52px;
   }
   .pg-promo-btn {
-    height: 30px;
+    width: 96px;
+    height: 32px;
   }
   .pg-home-cta {
     bottom: calc(76px + var(--safe-bottom));
@@ -2973,8 +3110,8 @@
     height: 28px;
   }
   .pg-play-btn {
-    width: 192px;
-    height: 48px;
+    width: 174px;
+    height: 58px;
   }
   .pg-play-btn-txt {
     font-size: 18px;
@@ -2983,7 +3120,8 @@
     font-size: 16px;
   }
   .pg-med-btn {
-    height: 40px;
+    width: 124px;
+    height: 42px;
   }
   .pg-hud-top {
     height: calc(68px + var(--hud-safe-top));
@@ -3014,9 +3152,13 @@
     height: 36px;
   }
   .pg-tutorial-bar,
-  .pg-star-alert,
   .pg-subhud-pill {
     top: calc(78px + var(--hud-safe-top));
+  }
+  .pg-star-alert {
+    top: calc(67px + var(--hud-safe-top));
+    width: 216px;
+    height: 64px;
   }
   .pg-modal-mask {
     padding: calc(40px + var(--safe-top)) 16px calc(16px + var(--safe-bottom));
@@ -3024,14 +3166,14 @@
   .pg-win-overlay {
     top: calc(72px + var(--hud-safe-top));
     justify-content: center;
-    gap: 20px;
+    gap: 16px;
     padding: 10px 14px calc(16px + var(--safe-bottom));
   }
   .pg-event-modal {
-    min-height: 268px;
+    min-height: 248px;
   }
   .pg-modal-body {
-    padding: 44px 18px 38px;
+    padding: 12px 18px 12px;
     gap: 8px;
   }
   .pg-winding-board {
@@ -3061,11 +3203,11 @@
     font-size: 24px;
   }
   .pg-win-card {
-    min-height: 274px;
+    min-height: 262px;
   }
   .pg-win-modal-body {
-    padding: 42px 16px 36px;
-    gap: 6px;
+    padding: 12px 16px 12px;
+    gap: 8px;
   }
   .pg-purify-top {
     top: calc(var(--menu-header-top) + 2px);
@@ -3077,7 +3219,7 @@
     top: calc(var(--menu-header-top) + 78px);
   }
   .pg-purify-card {
-    min-height: 224px;
+    min-height: 214px;
   }
   .pg-daily-item {
     height: 44px;
@@ -4019,13 +4161,17 @@ const OFFICIAL_ATOMIC_CONFIG = deepFreeze({
     streakItemEnabled: true,
   },
 
-  // Level.SetupLevel Dynamic Shot Budget (Level.txt + WorldConfig.txt)
+  // BallShooter.Start() + Level.CalculateMinimumNumberOfBallsNeededToFinish() (BallShooter.txt + Level.txt)
   shotBudget: {
-    zoneShotMultiplier: 1.25,
+    tutorialInfiniteShots: true,
+    zoneShotMultiplier: 1.35,
+    baseShotCushion: 8,
     highLevelStepPenaltyAfter: 20,
     highLevelStepPenaltyModulo: 3,
-    minShotFloor: 3,
+    minShotFloor: 14,
     shieldExtraBallsDefault: 3,
+    propellerShotDivisor: 2.5,
+    yoyoRotationMultiplier: 1.15,
   },
 
   // Economy, GemCreator, Shop & BonusLevelCoin (GameOverScreen.txt + GemCreatorScreen.txt + BonusLevelCoin.txt)
@@ -4085,8 +4231,10 @@ const MOD_PRESETS = deepFreeze({
       resetOnWrongColorHit: false,
     },
     shotBudget: {
-      zoneShotMultiplier: 1.35,
-      minShotFloor: 5,
+      tutorialInfiniteShots: true,
+      zoneShotMultiplier: 1.60,
+      baseShotCushion: 10,
+      minShotFloor: 18,
     },
     economy: {
       continueBasePrice: 50,
@@ -4123,7 +4271,10 @@ const MOD_PRESETS = deepFreeze({
       streakItemRatio: 0.50,
     },
     shotBudget: {
-      zoneShotMultiplier: 1.15,
+      tutorialInfiniteShots: true,
+      zoneShotMultiplier: 1.45,
+      baseShotCushion: 9,
+      minShotFloor: 16,
     },
     economy: {
       eventLevelsGrantPearls: true,
@@ -4167,8 +4318,10 @@ const MOD_PRESETS = deepFreeze({
       resetOnWrongColorHit: true,
     },
     shotBudget: {
-      zoneShotMultiplier: 0.85,
-      minShotFloor: 3,
+      tutorialInfiniteShots: false,
+      zoneShotMultiplier: 1.05,
+      baseShotCushion: 3,
+      minShotFloor: 8,
     },
     economy: {
       continueBasePrice: 150,
@@ -4196,12 +4349,14 @@ const MOD_PARAMETER_SCHEMA = deepFreeze([
   },
   {
     section: 'shotBudget',
-    title: '🎱 球数预算与容错 (Level.SetupLevel)',
+    title: '🎱 球数预算与容错 (BallShooter.Start)',
     items: [
+      { key: 'tutorialInfiniteShots', label: '新手引导关无限球数', type: 'boolean' },
       { key: 'zoneShotMultiplier', label: '色区球数倍率 (zoneShotMult)', type: 'number', min: 0.5, max: 2.5, step: 0.05, unit: 'x' },
+      { key: 'baseShotCushion', label: '基础容错缓冲步数', type: 'number', min: 0, max: 20, step: 1, unit: '球' },
       { key: 'highLevelStepPenaltyAfter', label: '高难步数缩减起始关', type: 'number', min: 1, max: 100, step: 1, unit: '关' },
-      { key: 'highLevelStepPenaltyModulo', label: '高难步数缩减阶梯周期', type: 'number', min: 5, max: 60, step: 5, unit: '关' },
-      { key: 'minShotFloor', label: '最低保底步数 (minShots)', type: 'number', min: 1, max: 15, step: 1, unit: '球' },
+      { key: 'highLevelStepPenaltyModulo', label: '高难步数缩减阶梯周期', type: 'number', min: 2, max: 60, step: 1, unit: '关' },
+      { key: 'minShotFloor', label: '最低保底步数 (minShots)', type: 'number', min: 3, max: 25, step: 1, unit: '球' },
       { key: 'shieldExtraBallsDefault', label: '护盾默认补偿步数', type: 'number', min: 0, max: 15, step: 1, unit: '球' },
     ],
   },
@@ -5476,42 +5631,104 @@ function getDailyStagesForDate(dateKey = '') {
 }
 
 /**
- * Compute optimal shot budget matching Level.cs formula + Shield.extraBalls + WorldConfig.ballAdjustment
+ * Compute baseline shot budget before sphere instantiation (used by Bonus levels, custom editor, and fallback).
  */
-function computeOfficialShotBudget(layers, startRadius, colorCount, shieldCfg, explicitBalls, ballAdj = 0) {
-  const shieldExtra = shieldCfg ? Math.max(0, Number(shieldCfg.extraBalls) || 5) : 0;
-  if (explicitBalls && explicitBalls > 0) {
-    return explicitBalls + shieldExtra;
+function computeOfficialShotBudget(layers, startRadius, colorCount, shieldCfg, rawBalls, ballAdj = 0, levelType = 0) {
+  const shieldExtra = shieldCfg ? Math.max(0, Number(shieldCfg.extraBalls) || 3) : 0;
+  if (typeof rawBalls === 'number' && rawBalls > 0) {
+    return rawBalls + shieldExtra;
+  }
+  if (rawBalls === 0 && levelType === 0) {
+    return 99999999;
   }
   const baseShots = Math.round(
-    9 + layers * 4.5 + Math.max(0, startRadius - 4) * 2.5 + colorCount * 2.2 + shieldExtra + ballAdj
+    11 + layers * 4.5 + Math.max(0, startRadius - 4) * 2.5 + colorCount * 2.2 + shieldExtra + ballAdj
   );
-  return Math.max(12, Math.min(54, baseShots));
+  return Math.max(15, Math.min(56, baseShots));
 }
 
 /**
- * BallShooter.Start() + Level.CalculateMinimumNumberOfBallsNeededToFinish():
- * - minBalls = count of unexploded ColorZones over all layers
- * - balls = CeilToInt(minBalls * K)   (K is a .rodata literal; 1.25 retained as estimate)
- * - LevelIndex > 20 && LevelIndex % 3 == 0 -> balls -= 1   (LevelIndex = 0-based index in world)
- * - if (!levelConfig.isCustom) balls += world.ballAdjustment
- * - balls = Max(balls, 3), then + shield.extraBalls
+ * Decompiled BallShooter.Start() (BallShooter.txt ISIL 095-481 & 627-767) +
+ * Level.CalculateMinimumNumberOfBallsNeededToFinish():
+ * - levelConfig.balls == 0 (Tutorial sentinel on levelType == 0):
+ *     ballsLeft = 99999999 (infinite shots; shooter ready-ball number hidden per CMP W8, #0x3E7)
+ *     unless modConfig.shotBudget.tutorialInfiniteShots === false.
+ * - levelConfig.balls > 0 (Hand-tuned campaign / Daily / GemQuest / HolidaySparkle):
+ *     balls = explicitBalls + shieldExtraBalls (topped up if noStar && explicitBalls < minZones).
+ * - levelConfig.balls < 0 or procedural auto level:
+ *     minZones = unexploded ColorZones across all layers
+ *     Generous Voronoi-aware shot budget with small-sphere cushion (so 5-10 zone multi-layer spheres
+ *     receive 15-22 shots instead of 7-9), tapered on large 24+ zone spheres:
+ *       +1 if patternType != 0 (Spiral / Stripes / Rings / etc.)
+ *       -floor(propellerCount / 2.5) clamped so it never starves small spheres
+ *       *1.15 if rotPattern == 'yoyo'
+ *       -1 if levelIndex > 20 && levelIndex % 3 == 0
+ *       + world.ballAdjustment (for non-custom campaign levels)
+ *       clamped to >= minShotFloor, then + shield.extraBalls
  */
 function computeDynamicShotBudgetFromSphere(sphere, desc, modConfig = null) {
   if (!desc) return 20;
-  if (!sphere || sphere.isSnakeLevel || desc.levelType === 1 || (desc.explicitBalls && desc.explicitBalls > 0)) {
+  const shotCfg =
+    (modConfig && modConfig.shotBudget) ||
+    (sphere && sphere.modConfig && sphere.modConfig.shotBudget) ||
+    OFFICIAL_ATOMIC_CONFIG.shotBudget;
+
+  if (desc.infiniteShots && shotCfg.tutorialInfiniteShots !== false) {
+    return 99999999;
+  }
+  if (!sphere || sphere.isSnakeLevel || desc.levelType === 1) {
     return desc.shots;
   }
-  const shotCfg = (modConfig && modConfig.shotBudget) || (sphere && sphere.modConfig && sphere.modConfig.shotBudget) || OFFICIAL_ATOMIC_CONFIG.shotBudget;
-  const zoneMult = Number.isFinite(shotCfg.zoneShotMultiplier) ? shotCfg.zoneShotMultiplier : 1.25;
-  const penaltyAfter = Number.isFinite(shotCfg.highLevelStepPenaltyAfter) ? shotCfg.highLevelStepPenaltyAfter : 20;
-  const penaltyMod = Math.max(1, Number.isFinite(shotCfg.highLevelStepPenaltyModulo) ? shotCfg.highLevelStepPenaltyModulo : 3);
-  const minFloor = Number.isFinite(shotCfg.minShotFloor) ? shotCfg.minShotFloor : 3;
 
   const minBalls = typeof sphere.calculateMinimumBallsNeededToFinish === 'function'
-    ? sphere.calculateMinimumBallsNeededToFinish()
-    : (sphere.colorZones ? sphere.colorZones.length : 16);
-  let balls = Math.ceil(minBalls * zoneMult);
+    ? Math.max(1, sphere.calculateMinimumBallsNeededToFinish())
+    : Math.max(1, sphere.colorZones ? sphere.colorZones.length : 14);
+
+  if (desc.explicitBalls && desc.explicitBalls > 0) {
+    let fixedBalls = desc.explicitBalls;
+    if (desc.noStar && fixedBalls < minBalls) {
+      fixedBalls = minBalls + 4;
+    }
+    return fixedBalls + (Number(desc.shieldExtraBalls) || 0);
+  }
+
+  const zoneMult = Number.isFinite(shotCfg.zoneShotMultiplier) ? shotCfg.zoneShotMultiplier : 1.35;
+  const rawCushion = Number.isFinite(shotCfg.baseShotCushion)
+    ? shotCfg.baseShotCushion
+    : Math.round(8 * (zoneMult / 1.35));
+  const penaltyAfter = Number.isFinite(shotCfg.highLevelStepPenaltyAfter) ? shotCfg.highLevelStepPenaltyAfter : 20;
+  const penaltyMod = Math.max(1, Number.isFinite(shotCfg.highLevelStepPenaltyModulo) ? shotCfg.highLevelStepPenaltyModulo : 3);
+  const minFloor = Number.isFinite(shotCfg.minShotFloor) ? shotCfg.minShotFloor : 14;
+  const propDiv = Number.isFinite(shotCfg.propellerShotDivisor) && shotCfg.propellerShotDivisor > 0
+    ? shotCfg.propellerShotDivisor
+    : 2.5;
+  const yoyoMult = Number.isFinite(shotCfg.yoyoRotationMultiplier) ? shotCfg.yoyoRotationMultiplier : 1.15;
+
+  // Taper cushion smoothly on high-zone spheres (BallShooter.Start ISIL 335-390 excess taper)
+  const taper = Math.max(0.25, 1.0 - Math.max(0, minBalls - 8) / 28);
+  let balls = Math.ceil(minBalls * zoneMult + rawCushion * taper);
+
+  if (desc.patternType && desc.patternType !== 0) {
+    balls += 1;
+  }
+
+  let propCount = 0;
+  if (Array.isArray(sphere.pearls)) {
+    for (let i = 0; i < sphere.pearls.length; i++) {
+      if (sphere.pearls[i] && sphere.pearls[i].alive !== false && !sphere.pearls[i].removed && sphere.pearls[i].hasPropeller) {
+        propCount++;
+      }
+    }
+  }
+  if (propCount > 0) {
+    const propDeduct = Math.min(4, Math.floor(propCount / propDiv));
+    balls = Math.max(minBalls + 5, balls - propDeduct);
+  }
+
+  if (desc.rotPattern === 'yoyo') {
+    balls = Math.ceil(balls * yoyoMult);
+  }
+
   const li = typeof desc.levelIndex === 'number' ? desc.levelIndex : Math.max(0, (desc.levelInWorld || 1) - 1);
   if (li > penaltyAfter && li % penaltyMod === 0) {
     balls -= 1;
@@ -5701,13 +5918,17 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
   }
 
   const colors = makeColorList(paletteRgb);
+  const shotCfg = (modConfig && modConfig.shotBudget) || OFFICIAL_ATOMIC_CONFIG.shotBudget;
+  const rawBalls = rawCfg && typeof rawCfg.balls === 'number' ? rawCfg.balls : -1;
+  const infiniteShots = !!(rawCfg && rawBalls === 0 && levelType === 0 && shotCfg.tutorialInfiniteShots !== false);
   const shots = computeOfficialShotBudget(
     layersCount,
     startRadius,
     colors.length,
     shieldCfg,
-    rawCfg ? rawCfg.balls : 0,
-    world.ballAdj || 0
+    infiniteShots ? 0 : (rawBalls > 0 ? rawBalls : -1),
+    world.ballAdj || 0,
+    levelType
   );
 
   // Atomic Unity Level.Build + LevelConfig.CalculateNumberOfBubblesInLayer / SphereLayer.CalculateNumberOfBubbles:
@@ -5725,14 +5946,14 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     const rotDegPerSec = rotSpeeds && rotSpeeds[l] !== undefined
       ? (parallax && l % 2 === 1 ? -Math.abs(rotSpeeds[l]) : rotSpeeds[l])
       : (rotPattern === 'yoyo' ? 24.0 : 14.0);
-    // Level.Build seedsCount: for range levels, (int)(r/2) + Random.Range(minSeeds, (int)r + maxSeeds) clamped to (int)r * 2
+    // Level.Build seedsCount: preserve hand-authored high minSeeds/maxSeeds (e.g. Level_1-15 minS=20, maxS=30 on r=8)
     let seeds;
     if (minSeeds < maxSeeds) {
       const halfR = Math.floor(rWorld / 2);
       seeds = rWorld < 4
         ? halfR + 2 + Math.floor(rng() * 6)
         : halfR + minSeeds + Math.floor(rng() * Math.max(1, Math.floor(rWorld) + maxSeeds - minSeeds));
-      seeds = Math.min(Math.floor(rWorld) * 2, Math.max(1, seeds));
+      seeds = Math.min(Math.max(maxSeeds, Math.floor(rWorld) * 2), Math.max(minSeeds, seeds));
     } else {
       seeds = Math.max(1, minSeeds);
     }
@@ -5857,7 +6078,9 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     maxOuterRadius,
     colors,
     shots,
-    explicitBalls: (rawCfg && rawCfg.balls) || 0,
+    infiniteShots,
+    rawBalls,
+    explicitBalls: rawBalls > 0 ? rawBalls : 0,
     worldBallAdj: world.ballAdj || 0,
     layers,
     glassShields,
@@ -13819,6 +14042,21 @@ class PearlGemEngine {
 
   // ==================== FRAME UPDATE & COLLISION RESOLUTION ====================
 
+  _clearGameplayTransientUI() {
+    this.cancelAim();
+    this._missFlashTimer = 0;
+    this.introBannerTimer = 0;
+    this._starAlertTimer = 0;
+    this.starAlertBanner = false;
+    this._floatingHitTimer = 0;
+    this._floatingHitAccum = 0;
+    this.floatingHitText = '';
+    this._funnelPopupTimer = 0;
+    this.funnelPopupText = '';
+    this._comboTimer = 0;
+    this.comboText = '';
+  }
+
   step(dt) {
     const clampedDt = Math.min(0.05, Math.max(0.001, dt));
 
@@ -13931,7 +14169,7 @@ class PearlGemEngine {
     }
 
     if (this.sphere && (this.mode === 'playing' || this.mode === 'won' || this.mode === 'continue')) {
-      if (!this.inGameSettingsOpen) {
+      if (!this.inGameSettingsOpen && !(this.mode === 'continue' && this.sphere.isSnakeLevel)) {
         this.sphere.step(clampedDt);
         // Level.CheckRadius() + Player.UpdatePos(dt, true) + Funnel.UpdatePos(dt):
         // Smoothly zoom camera Z and contract Funnel Y/scale as outer sphere layers are cleared!
@@ -13990,6 +14228,7 @@ class PearlGemEngine {
       if (this.sphere && this.sphere.isSnakeLevel && this.sphere.snakeReachedEnd && !this.activeColorBomb) {
         this.audio.playSfx('fail_lose');
         this.audio.setBgmMood('lost');
+        this._clearGameplayTransientUI();
         this.mode = 'continue';
         this.modHooks.emit('onLevelFail', { reason: 'snake_portal', level: this.levelDescriptor ? this.levelDescriptor.globalLevel : 1 }, this);
         this._emitUIState();
@@ -14032,6 +14271,7 @@ class PearlGemEngine {
         if (this.loseGraceTimer <= 0) {
           this.audio.playSfx('fail_lose');
           this.audio.setBgmMood('lost');
+          this._clearGameplayTransientUI();
           this.mode = 'continue';
           this.modHooks.emit('onLevelFail', { reason: 'out_of_shots', level: this.levelDescriptor ? this.levelDescriptor.globalLevel : 1 }, this);
           this._emitUIState();
@@ -14144,7 +14384,7 @@ class PearlGemEngine {
       this._spawnWinFireworkBurst();
     }
 
-    if (this.shotsLeft > 0) {
+    if (this.shotsLeft > 0 && this.shotsLeft <= 999) {
       this._winCountdownAccum += dt;
       // BallsCountdown.StartCountDown: interval = Min(5f / startCount, 0.25f)
       if (!this._winTick) this._winTick = Math.min(5 / Math.max(1, this.shotsLeft), 0.25);
@@ -15219,7 +15459,7 @@ class PearlGemEngine {
     const prevForgeTotal = (prevSnap.poolPearls || 0) + (prevSnap.unpouredPearls || 0);
     const forgeTarget = Math.max(1, prevSnap.targetPearls || 200);
 
-    const leftoverShots = Math.max(0, this.shotsLeft);
+    const leftoverShots = this.shotsLeft > 999 ? 0 : Math.max(0, this.shotsLeft);
     const shotPearlBonus = leftoverShots * 12;
     const totalPearlsEarned = Math.max(40, this.pearlsThisRun + shotPearlBonus);
     const basePearlsBeforeCountdown = Math.max(0, totalPearlsEarned - shotPearlBonus);
@@ -15307,6 +15547,7 @@ class PearlGemEngine {
       }
     }
 
+    this._clearGameplayTransientUI();
     this.mode = 'won';
     this._spawnWinFireworkBurst();
     this.audio.playSfx('win');
@@ -15318,7 +15559,7 @@ class PearlGemEngine {
 
   claimDoubleWinPearls() {
     if (this.mode !== 'won' || !this.lastWinSummary || this.lastWinSummary.doubled) return false;
-    if (this.shotsLeft > 0) {
+    if (this.shotsLeft > 0 && this.shotsLeft <= 999) {
       this.winBonusPearlsAnim += this.shotsLeft * 12;
       this.shotsLeft = 0;
     }
@@ -15341,7 +15582,7 @@ class PearlGemEngine {
 
   nextAfterWin() {
     this.audio.playSfx('click');
-    if (this.shotsLeft > 0) {
+    if (this.shotsLeft > 0 && this.shotsLeft <= 999) {
       this.winBonusPearlsAnim += this.shotsLeft * 12;
       this.shotsLeft = 0;
     }
@@ -15401,7 +15642,9 @@ class PearlGemEngine {
     const econCfg = (this.modConfig && this.modConfig.economy) || OFFICIAL_ATOMIC_CONFIG.economy;
     const extraBalls = Number.isFinite(econCfg.continueExtraBalls) ? econCfg.continueExtraBalls : CONTINUE_EXTRA_SHOTS;
     this.continuesUsed = (this.continuesUsed || 0) + 1;
-    this.shotsLeft += extraBalls;
+    if (this.shotsLeft <= 999) {
+      this.shotsLeft += extraBalls;
+    }
     this.loseGraceTimer = 1.1;
     if (this.sphere && this.sphere.isSnakeLevel && this.sphere.snakeReachedEnd) {
       this.sphere.snakeProgress = Math.max(0.20, this.sphere.snakeProgress - 0.36);
@@ -16277,6 +16520,7 @@ class PearlGemEngine {
       pearlsThisRun: this.pearlsThisRun,
       hudPearlsCount: this.pearlsThisRun + (this.winBonusPearlsAnim || 0),
       shotsLeft: this.shotsLeft,
+      infiniteShots: this.shotsLeft > 999,
       activeBooster: this.activeBooster,
       starStreak: this.starStreak || 0,
       starMaxHits: desc.starMaxHits || this.coreActivateHits || STAR_MAX_HITS,
@@ -16316,7 +16560,7 @@ class PearlGemEngine {
             : 0
       ),
       winBarPct: Math.min(100, Math.round(this._winBarPct || 0)),
-      winCountingDown: this.mode === 'won' && this.shotsLeft > 0,
+      winCountingDown: this.mode === 'won' && this.shotsLeft > 0 && this.shotsLeft <= 999,
       continueCost: this.getContinueCostCoins(),
       continueCanAfford: save.coins >= this.getContinueCostCoins(),
       continueExtraShots: CONTINUE_EXTRA_SHOTS,
@@ -16416,6 +16660,7 @@ module.exports = { PearlGemEngine };
       let toastTimer = null;
       let wxSafeMode = true;
       let lastStructuralKey = '';
+      let prevModalToken = '';
       let promoInputText = '';
 
       function showToast(msg) {
@@ -16503,94 +16748,148 @@ module.exports = { PearlGemEngine };
       }
 
       function getStructuralKey(ui) {
-        return JSON.stringify([
-          ui.mode,
-          ui.menuTab,
-          ui.inGameSettingsOpen,
-          ui.quitConfirmOpen,
-          ui.promoModalOpen,
-          ui.promoFeedback,
-          ui.debugPanelOpen,
-          ui.activeEventModal,
-          ui.selectedCollectionGem && ui.selectedCollectionGem.id,
-          ui.level,
-          ui.levelType,
-          ui.isSnakeLevel,
-          ui.levelTitle,
-          ui.planetWorldLabel,
-          ui.planetSegDone,
-          ui.planetSegTotal,
-          ui.hasStolenGem,
-          ui.gemQuestSafeReady,
-          ui.holidayEnvelopeReady,
-          ui.gemQuestIdx,
-          ui.holidayIdx,
-          ui.canClaimFreePouch,
-          ui.allDailyDone,
-          ui.dailyStreak,
-          ui.dailyCompleted,
-          ui.unpouredPearls > 0,
-          ui.pourAnimActive,
-          ui.gemHalfwayClaimed,
-          ui.halfwayGiftBanner,
-          ui.offlineDuckBonusBanner,
-          ui.postWinDoubleAvailable,
-          ui.postWinBatchPearls,
-          ui.canCreateGem,
-          ui.hasGemBadge,
-          ui.hasCollectionNewBadge,
-          ui.ownedUniqueGems,
-          ui.ducksOwned,
-          ui.collectionRarityFilter,
-          ui.collectionMineOnly,
-          ui.collectionGems.map((g) => `${g.id}:${g.owned ? 1 : 0}:${g.isNew ? 1 : 0}:${g.count}`),
-          ui.shopCapsules.map((c) => `${c.id}:${c.canAfford ? 1 : 0}`),
-          ui.soundOn,
-          ui.musicOn,
-          ui.vibrationOn,
-          ui.starActivated,
-          ui.starAlertBanner,
-          ui.streakRewardType,
-          ui.mode === 'playing' && ui.shotsLeft > 0,
-          ui.shotsLeft <= 3 && ui.mode === 'playing',
-          ui.warsonMaxHp > 0 && ui.warsonHp > 0,
-          ui.bonusCoinsTotal > 0,
-          ui.decorSprite,
-          ui.comboText,
-          ui.floatingHitText,
-          ui.funnelPopupText,
-          ui.tutorialActive,
-          ui.introBannerVisible,
-          ui.tutorialText,
-          ui.aimCancelled,
-          ui.activeBooster,
-          ui.noSwitch,
-          ui.noSpecial,
-          ui.doubleSwitchUnlocked,
-          ui.doubleSwitchFree,
-          ui.doubleSwitchCanAfford,
-          ui.propellerUnlocked,
-          ui.bombUnlocked,
-          ui.rainbowUnlocked,
-          ui.propellerBalls,
-          ui.bombBalls,
-          ui.rainbowBalls,
-          ui.shooterCssX,
-          ui.shooterCssY,
-          ui.switcherCssX,
-          ui.switcherCssY,
-          ui.noStar,
-          ui.hasPendingPurify,
-          ui.continueCanAfford,
-          ui.purifyState && ui.purifyState.phase,
-          ui.purifyState && ui.purifyState.planetSaved,
-          ui.purifyState && ui.purifyState.isEndOfWorlds,
-          ui.giftState && ui.giftState.opened,
-          ui.safeOutroState && `${ui.safeOutroState.cracked ? 1 : 0}:${ui.safeOutroState.bombFlying ? 1 : 0}`,
-          ui.envelopeOutroState && ui.envelopeOutroState.opened,
-          ui.lastWinSummary && ui.lastWinSummary.doubled,
-          ui.showcaseGem && ui.showcaseGem.id
-        ]);
+        const m = ui.mode;
+        if (m === 'menu') {
+          const tab = ui.menuTab;
+          return JSON.stringify([
+            m,
+            tab,
+            ui.level,
+            ui.levelType,
+            ui.planetWorldLabel,
+            ui.planetSegDone,
+            ui.planetSegTotal,
+            ui.hasStolenGem ? 1 : 0,
+            ui.hasPendingPurify ? 1 : 0,
+            ui.canCreateGem ? 1 : 0,
+            ui.allDailyDone ? 1 : 0,
+            ui.canClaimFreePouch ? 1 : 0,
+            ui.gemQuestSafeReady ? 1 : 0,
+            ui.holidayEnvelopeReady ? 1 : 0,
+            ui.hasGemBadge ? 1 : 0,
+            ui.hasCollectionNewBadge ? 1 : 0,
+            ui.selectedCollectionGem ? `${ui.selectedCollectionGem.id}:${ui.selectedCollectionGem.count}` : '',
+            ui.promoModalOpen ? 1 : 0,
+            ui.promoFeedback || '',
+            ui.debugPanelOpen ? 1 : 0,
+            ui.activeEventModal || '',
+            ui.activeEventModal ? [ui.dailyStreak, ui.dailyResetCountdown, ui.dailyCompleted, ui.gemQuestIdx, ui.holidayIdx] : null,
+            tab === 'gems' ? [
+              ui.pourAnimActive ? 1 : 0,
+              ui.unpouredPearls > 0 ? 1 : 0,
+              ui.ducksOwned,
+              ui.gemHalfwayClaimed ? 1 : 0,
+              ui.offlineDuckBonusBanner,
+              ui.halfwayGiftBanner ? 1 : 0,
+              ui.postWinDoubleAvailable ? 1 : 0,
+              ui.postWinBatchPearls
+            ] : null,
+            tab === 'collection' ? [
+              ui.ownedUniqueGems,
+              ui.ducksOwned,
+              ui.collectionMineOnly ? 1 : 0,
+              ui.collectionRarityFilter,
+              ui.collectionGems.map((g) => `${g.id}:${g.owned ? 1 : 0}:${g.isNew ? 1 : 0}:${g.count}`)
+            ] : null,
+            tab === 'shop' ? ui.shopCapsules.map((c) => `${c.id}:${c.canAfford ? 1 : 0}:${c.costCoins}`) : null,
+            tab === 'settings' ? [ui.soundOn ? 1 : 0, ui.musicOn ? 1 : 0, ui.vibrationOn ? 1 : 0] : null
+          ]);
+        }
+        if (m === 'playing') {
+          return JSON.stringify([
+            m,
+            ui.inGameSettingsOpen ? 1 : 0,
+            ui.quitConfirmOpen ? 1 : 0,
+            ui.inGameSettingsOpen ? [ui.soundOn ? 1 : 0, ui.musicOn ? 1 : 0] : null,
+            ui.levelType,
+            ui.isSnakeLevel ? 1 : 0,
+            ui.levelTitle,
+            ui.noStar ? 1 : 0,
+            ui.starActivated ? 1 : 0,
+            ui.starAlertBanner ? 1 : 0,
+            ui.streakRewardType || '',
+            ui.infiniteShots ? 1 : 0,
+            !ui.infiniteShots && ui.shotsLeft > 0 ? 1 : 0,
+            !ui.infiniteShots && ui.shotsLeft <= 3 ? 1 : 0,
+            ui.warsonMaxHp > 0 && ui.warsonHp > 0 ? 1 : 0,
+            ui.bonusCoinsTotal > 0 ? 1 : 0,
+            ui.decorSprite,
+            ui.decorFlip ? 1 : 0,
+            ui.comboText || '',
+            ui.floatingHitText || '',
+            ui.funnelPopupText || '',
+            ui.tutorialActive ? 1 : 0,
+            ui.introBannerVisible ? 1 : 0,
+            ui.tutorialText || '',
+            ui.aimCancelled ? 1 : 0,
+            ui.activeBooster || '',
+            ui.noSwitch ? 1 : 0,
+            ui.noSpecial ? 1 : 0,
+            ui.doubleSwitchUnlocked ? 1 : 0,
+            ui.doubleSwitchFree ? 1 : 0,
+            ui.doubleSwitchCanAfford ? 1 : 0,
+            ui.doubleSwitchCost,
+            ui.propellerUnlocked ? 1 : 0,
+            ui.bombUnlocked ? 1 : 0,
+            ui.rainbowUnlocked ? 1 : 0,
+            ui.propellerBalls,
+            ui.bombBalls,
+            ui.rainbowBalls,
+            ui.shooterCssX,
+            ui.shooterCssY,
+            ui.shooterDiameterPx,
+            ui.switcherCssX,
+            ui.switcherCssY,
+            ui.switcherDiameterPx
+          ]);
+        }
+        if (m === 'won') {
+          return JSON.stringify([
+            m,
+            ui.levelTitle,
+            ui.noStar ? 1 : 0,
+            ui.starActivated ? 1 : 0,
+            ui.streakRewardType || '',
+            ui.infiniteShots ? 1 : 0,
+            ui.decorSprite,
+            ui.decorFlip ? 1 : 0,
+            Boolean(ui.lastWinSummary),
+            ui.lastWinSummary && ui.lastWinSummary.doubled ? 1 : 0
+          ]);
+        }
+        if (m === 'continue') {
+          return JSON.stringify([
+            m,
+            ui.isSnakeLevel ? 1 : 0,
+            ui.noStar ? 1 : 0,
+            ui.starActivated ? 1 : 0,
+            ui.streakRewardType || '',
+            ui.infiniteShots ? 1 : 0,
+            ui.decorSprite,
+            ui.decorFlip ? 1 : 0,
+            ui.pearlsThisRun,
+            ui.continueCanAfford ? 1 : 0,
+            ui.continueCost
+          ]);
+        }
+        if (m === 'gem_revealed') {
+          return JSON.stringify([m, ui.showcaseGem ? `${ui.showcaseGem.id}:${ui.showcaseGem.willSavePlanet ? 1 : 0}` : '']);
+        }
+        if (m === 'planet_purify') {
+          const ps = ui.purifyState;
+          return JSON.stringify([m, ps ? `${ps.phase}:${ps.planetSaved ? 1 : 0}:${ps.isEndOfWorlds ? 1 : 0}:${ps.gemName}:${ps.worldLabel}` : '']);
+        }
+        if (m === 'gift_takeover') {
+          return JSON.stringify([m, ui.giftState ? `${ui.giftState.opened ? 1 : 0}:${ui.giftState.subtitle || ''}` : '']);
+        }
+        if (m === 'safe_outro') {
+          const so = ui.safeOutroState;
+          return JSON.stringify([m, so ? `${so.cracked ? 1 : 0}:${so.bombFlying ? 1 : 0}:${so.gemName || ''}` : '']);
+        }
+        if (m === 'envelope_outro') {
+          return JSON.stringify([m, ui.envelopeOutroState ? `${ui.envelopeOutroState.opened ? 1 : 0}` : '']);
+        }
+        return JSON.stringify([m]);
       }
 
       function renderTransientFX(ui) {
@@ -16632,8 +16931,10 @@ module.exports = { PearlGemEngine };
         };
         setText('[data-bind="coins"]', ui.coins);
         setText('[data-bind="hudPearls"]', ui.hudPearlsCount);
-        setText('[data-bind="hudShots"]', ui.shotsLeft);
-        setText('[data-bind="ballShots"]', ui.shotsLeft);
+        setText('[data-bind="hudShots"]', ui.infiniteShots ? '∞' : ui.shotsLeft);
+        if (!ui.infiniteShots) {
+          setText('[data-bind="ballShots"]', ui.shotsLeft);
+        }
         setText('[data-bind="coreCount"]', ui.starActivated ? '已激活' : `${ui.starStreak}/${ui.starMaxHits}`);
         setText('[data-bind="poolRatio"]', `${ui.poolPearls} / ${ui.targetPearls}`);
         setText(
@@ -16688,6 +16989,10 @@ module.exports = { PearlGemEngine };
         }
         lastStructuralKey = sKey;
 
+        const modalToken = `${ui.mode}:${ui.activeEventModal || ''}:${ui.inGameSettingsOpen ? 1 : 0}:${ui.promoModalOpen ? 1 : 0}:${ui.debugPanelOpen ? 1 : 0}:${ui.selectedCollectionGem ? ui.selectedCollectionGem.id : ''}`;
+        const modalEnterCls = modalToken !== prevModalToken ? ' pg-anim-enter' : '';
+        prevModalToken = modalToken;
+
         let html = '';
 
         // ==================== 1. 主界面（原版五栏导航） ====================
@@ -16697,7 +17002,7 @@ module.exports = { PearlGemEngine };
           if (ui.menuTab === 'home' || ui.menuTab === 'shop' || ui.menuTab === 'gems') {
             html += `
               <div class="pg-top-coins pointer-auto" data-action="switchTab" data-tab="shop">
-                <img class="pg-coin-bar-bg img-fill" src="${sp('coin_ui.png')}" alt="" />
+                <img class="pg-coin-bar-bg img-fit" src="${sp('coin_ui.png')}" alt="" />
                 <span class="pg-coin-bar-val" data-bind="coins">${ui.coins}</span>
               </div>
             `;
@@ -16895,7 +17200,6 @@ module.exports = { PearlGemEngine };
 
             const gemSlots = ui.collectionGems.map((g) => `
               <div class="pg-gem-slot ${g.owned ? 'pg-gem-owned' : 'pg-gem-locked'}" data-action="tapCollectionGem" data-id="${g.id}" data-owned="${g.owned ? '1' : ''}">
-                ${!g.owned ? `<img class="pg-offer-bg pg-slot-offer-bg img-fill" src="${sp('offer_rect.png')}" alt="" />` : ''}
                 <span class="pg-gem-code">${esc(g.code)}</span>
                 ${g.isNew ? `
                   <div class="pg-gem-new-tag"><span class="pg-gem-new-txt">新获</span></div>
@@ -16945,7 +17249,6 @@ module.exports = { PearlGemEngine };
             html += `
               <div class="pg-modal-mask pointer-auto">
                 <div class="pg-event-modal">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon pg-ribbon-gold">
                     <span class="pg-card-ribbon-txt pg-dark-txt">${esc(sg.code)} · 宝石鉴赏</span>
                   </div>
@@ -16989,7 +17292,7 @@ module.exports = { PearlGemEngine };
                       <div class="pg-capsule-bot-zone">
                         <span class="pg-capsule-desc ${item.style === 'special' ? 'pg-desc-light' : 'pg-desc-dark'}">${esc(item.desc)}</span>
                         <div class="pg-capsule-buy" data-action="buyCapsule" data-id="${item.id}">
-                          <img class="pg-btn-bg img-fill" src="${sp(item.canAfford ? 'btn_buy_small.png' : 'btn_not_enough.png')}" alt="" />
+                          <img class="pg-btn-bg img-fill" src="${sp(item.canAfford ? 'btn_buy_small.png' : 'btn_buy_small_off.png')}" alt="" />
                           <div class="pg-buy-row">
                             <img class="pg-xs-coin img-fit" src="${sp('coin_solo.png')}" alt="" />
                             <span class="pg-buy-txt">${item.costCoins}</span>
@@ -17044,7 +17347,8 @@ module.exports = { PearlGemEngine };
               <div class="pg-setting-row" data-action="toggleSetting" data-key="${key}">
                 <span class="pg-setting-label">${label}</span>
                 <div class="pg-toggle-box">
-                  <img class="pg-toggle-back img-fill" src="${sp(isOn ? 'settings_btn_green.png' : 'settings_btn_back.png')}" alt="" />
+                  <img class="pg-toggle-back img-fill" src="${sp('settings_btn_back.png')}" alt="" />
+                  ${isOn ? `<img class="pg-toggle-green img-fill" src="${sp('settings_btn_green.png')}" alt="" />` : ''}
                   <img class="pg-toggle-border img-fill" src="${sp('settings_btn_border.png')}" alt="" />
                   <span class="pg-toggle-state ${isOn ? 'pg-state-left' : 'pg-state-right'}">${isOn ? '开' : '关'}</span>
                   <img class="pg-toggle-knob img-fit ${isOn ? 'pg-knob-on' : 'pg-knob-off'}" src="${sp('settings_btn_knob.png')}" alt="" />
@@ -17054,8 +17358,8 @@ module.exports = { PearlGemEngine };
 
             html += `
               <div class="pg-tab-panel pointer-auto">
-                <div class="pg-panel-card">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
+                <div class="pg-panel-card pg-settings-win">
+                  <img class="pg-settings-win-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon">
                     <span class="pg-card-ribbon-txt">游戏设置</span>
                   </div>
@@ -17091,7 +17395,6 @@ module.exports = { PearlGemEngine };
             html += `
               <div class="pg-modal-mask pointer-auto">
                 <div class="pg-event-modal">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon pg-ribbon-gold">
                     <span class="pg-card-ribbon-txt pg-dark-txt">兑换惊喜礼包</span>
                   </div>
@@ -17119,7 +17422,6 @@ module.exports = { PearlGemEngine };
             html += `
               <div class="pg-modal-mask pointer-auto">
                 <div class="pg-event-modal">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon">
                     <span class="pg-card-ribbon-txt">场景演练面板</span>
                   </div>
@@ -17262,10 +17564,9 @@ module.exports = { PearlGemEngine };
 
             html += `
               <div class="pg-modal-mask pointer-auto">
-                <div class="pg-event-modal pg-swing-modal">
+                <div class="pg-event-modal pg-swing-modal${modalEnterCls}">
                   <div class="pg-swing-chain pg-chain-l"></div>
                   <div class="pg-swing-chain pg-chain-r"></div>
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon">
                     <span class="pg-card-ribbon-txt">${ribbonTitle}</span>
                   </div>
@@ -17380,7 +17681,7 @@ module.exports = { PearlGemEngine };
                       <span class="pg-info-title">球数</span>
                     </div>
                     <div class="pg-info-body">
-                      <span class="pg-info-num ${ui.shotsLeft <= 3 && ui.mode === 'playing' ? 'pg-danger-num' : ''}" data-bind="hudShots">${ui.shotsLeft}</span>
+                      <span class="pg-info-num ${!ui.infiniteShots && ui.shotsLeft <= 3 && ui.mode === 'playing' ? 'pg-danger-num' : ''}" data-bind="hudShots">${ui.infiniteShots ? '∞' : ui.shotsLeft}</span>
                     </div>
                   </div>
                 </div>
@@ -17446,7 +17747,7 @@ module.exports = { PearlGemEngine };
           `;
 
           if (ui.mode === 'playing') {
-            if (!ui.activeBooster && ui.shotsLeft > 0) {
+            if (!ui.activeBooster && !ui.infiniteShots && ui.shotsLeft > 0) {
               html += `
                 <div class="pg-ball-counter pointer-none" style="left: ${ui.shooterCssX}px; top: ${ui.shooterCssY}px; width: ${ui.shooterDiameterPx}px; height: ${ui.shooterDiameterPx}px;">
                   <span class="pg-ball-counter-txt" data-bind="ballShots">${ui.shotsLeft}</span>
@@ -17499,7 +17800,6 @@ module.exports = { PearlGemEngine };
             html += `
               <div class="pg-modal-mask pointer-auto">
                 <div class="pg-event-modal">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon">
                     <span class="pg-card-ribbon-txt">暂停菜单</span>
                   </div>
@@ -17525,7 +17825,8 @@ module.exports = { PearlGemEngine };
                         <div class="pg-setting-row" data-action="toggleSetting" data-key="soundOn">
                           <span class="pg-setting-label">游戏音效</span>
                           <div class="pg-toggle-box">
-                            <img class="pg-toggle-back img-fill" src="${sp(ui.soundOn ? 'settings_btn_green.png' : 'settings_btn_back.png')}" alt="" />
+                            <img class="pg-toggle-back img-fill" src="${sp('settings_btn_back.png')}" alt="" />
+                            ${ui.soundOn ? `<img class="pg-toggle-green img-fill" src="${sp('settings_btn_green.png')}" alt="" />` : ''}
                             <img class="pg-toggle-border img-fill" src="${sp('settings_btn_border.png')}" alt="" />
                             <span class="pg-toggle-state ${ui.soundOn ? 'pg-state-left' : 'pg-state-right'}">${ui.soundOn ? '开' : '关'}</span>
                             <img class="pg-toggle-knob img-fit ${ui.soundOn ? 'pg-knob-on' : 'pg-knob-off'}" src="${sp('settings_btn_knob.png')}" alt="" />
@@ -17534,7 +17835,8 @@ module.exports = { PearlGemEngine };
                         <div class="pg-setting-row" data-action="toggleSetting" data-key="musicOn">
                           <span class="pg-setting-label">背景音乐</span>
                           <div class="pg-toggle-box">
-                            <img class="pg-toggle-back img-fill" src="${sp(ui.musicOn ? 'settings_btn_green.png' : 'settings_btn_back.png')}" alt="" />
+                            <img class="pg-toggle-back img-fill" src="${sp('settings_btn_back.png')}" alt="" />
+                            ${ui.musicOn ? `<img class="pg-toggle-green img-fill" src="${sp('settings_btn_green.png')}" alt="" />` : ''}
                             <img class="pg-toggle-border img-fill" src="${sp('settings_btn_border.png')}" alt="" />
                             <span class="pg-toggle-state ${ui.musicOn ? 'pg-state-left' : 'pg-state-right'}">${ui.musicOn ? '开' : '关'}</span>
                             <img class="pg-toggle-knob img-fit ${ui.musicOn ? 'pg-knob-on' : 'pg-knob-off'}" src="${sp('settings_btn_knob.png')}" alt="" />
@@ -17561,7 +17863,7 @@ module.exports = { PearlGemEngine };
           if (ui.mode === 'won' && ui.lastWinSummary) {
             html += `
               <div class="pg-win-overlay pointer-auto">
-                <div class="pg-win-progress-wrap">
+                <div class="pg-win-progress-wrap${modalEnterCls}">
                   <div class="pg-win-banner">
                     <img class="pg-tut-bg img-fill" src="${sp('panel_animated.png')}" alt="" />
                     <img class="pg-tut-star img-fit" src="${sp('home_star.png')}" alt="" />
@@ -17579,8 +17881,7 @@ module.exports = { PearlGemEngine };
                   </div>
                 </div>
 
-                <div class="pg-event-modal pg-win-card">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
+                <div class="pg-event-modal pg-win-card${modalEnterCls}">
                   <div class="pg-card-ribbon pg-ribbon-gold">
                     <span class="pg-card-ribbon-txt pg-dark-txt" data-bind="winRibbonTxt">${ui.winCountingDown ? '剩球奖励结算中' : '过关奖励'}</span>
                   </div>
@@ -17622,8 +17923,9 @@ module.exports = { PearlGemEngine };
           if (ui.mode === 'continue') {
             html += `
               <div class="pg-modal-mask pointer-auto">
-                <div class="pg-event-modal">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
+                <div class="pg-event-modal pg-swing-modal${modalEnterCls}">
+                  <div class="pg-swing-chain pg-chain-l"></div>
+                  <div class="pg-swing-chain pg-chain-r"></div>
                   <div class="pg-card-ribbon">
                     <span class="pg-card-ribbon-txt">${ui.isSnakeLevel ? '贪吃蛇逼近终点！' : '球数用尽！'}</span>
                   </div>
@@ -17631,7 +17933,11 @@ module.exports = { PearlGemEngine };
                     <img class="pg-full-img img-fit" src="${sp('btn_no_thanks.png')}" alt="" />
                   </div>
                   <div class="pg-modal-body">
-                    <span class="pg-section-sub">${ui.isSnakeLevel ? '立即续关可击退贪吃蛇并补充 +5 球继续消除！' : ('本局已收集 ' + ui.pearlsThisRun + ' 颗珍珠，续关即可保留进度继续击破星核！')}</span>
+                    <div class="pg-continue-offer">
+                      <img class="pg-offer-bg img-fill" src="${sp('offer_rect_light.png')}" alt="" />
+                      <img class="pg-continue-offer-ic img-fit" src="${sp('home_star.png')}" alt="" />
+                      <span class="pg-continue-offer-txt">${esc(ui.isSnakeLevel ? '击退贪吃蛇并补充 +5 发射球' : ('补充 +5 发射球 · 保留已收 ' + ui.pearlsThisRun + ' 颗珍珠'))}</span>
+                    </div>
                     <div class="pg-modal-actions">
                       <div class="pg-play-btn" data-action="continueCoins">
                         <img class="pg-btn-bg img-fill" src="${sp(ui.continueCanAfford ? 'btn_ok_next.png' : 'btn_not_enough.png')}" alt="" />
@@ -17731,7 +18037,6 @@ module.exports = { PearlGemEngine };
             phaseHtml = `
               <div class="pg-purify-celebrate pointer-auto">
                 <div class="pg-event-modal pg-purify-card">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon">
                     <span class="pg-card-ribbon-txt">星晶被瓦森抢走了！</span>
                   </div>
@@ -17780,7 +18085,6 @@ module.exports = { PearlGemEngine };
             phaseHtml = `
               <div class="pg-purify-celebrate pointer-auto">
                 <div class="pg-event-modal pg-purify-card">
-                  <img class="pg-window-bg img-fill" src="${sp('settings_window.png')}" alt="" />
                   <div class="pg-card-ribbon pg-ribbon-gold">
                     <span class="pg-card-ribbon-txt pg-dark-txt">${ribbonTxt}</span>
                   </div>
