@@ -552,7 +552,7 @@
 .pg-settings-win {
   width: 332px;
   max-width: 100%;
-  height: 400px;
+  height: 480px;
   max-height: 100%;
   background: transparent;
   border: none;
@@ -3059,7 +3059,7 @@
   }
   .pg-settings-win {
     width: 306px;
-    height: 368px;
+    height: 440px;
   }
   .pg-card-ribbon {
     height: 38px;
@@ -5397,6 +5397,705 @@ module.exports = {
 
 });
 
+__register('./shape_levels', function(module, exports, require) {
+/**
+ * 造型关（Shape / Figure Levels）—— 用不同颜色的珍珠拼出立体造型
+ *
+ * 本模块不属于原版 APK 逆向内容，是在原版关卡规则之上的扩展玩法：
+ * - 造型由隐式曲面（SDF）描述，珍珠被均匀"贴"在曲面上（泊松盘采样 + 斥力松弛），
+ *   间距与原版 SphereLayer 密度一致（最近邻约 0.95，珍珠半径 0.50）。
+ * - 内层 = 曲面向内偏移 1.0 的等值面，沿用原版"多层球壳"规则。
+ * - 同层相邻同色珍珠 = 一个 ColorZone；同色命中整片消除；外层色区失去全部内层支撑后整片掉落。
+ *   （没有任何内层支撑的细小部位，如鸭嘴、树尖，标记为 anchored，必须直接命中。）
+ *
+ * 新增造型：在 SHAPES 里加一个 { nameZh, palette, bounds, layers, create(rng) } 即可，
+ * 再到 SHAPE_LEVEL_CONFIGS 里登记一个关卡名。
+ */
+
+const { seededRandom } = require('./math3d');
+
+const SPACING = 0.95;      // 目标最近邻间距（原版 0.85 / 0.23^2 密度换算）
+const PEARL_RADIUS = 0.5;  // 原版珍珠世界半径
+const LAYER_GAP = 1.0;     // 原版相邻球层半径差
+const NEIGHBOR_DIST = SPACING * 1.36;
+
+// ---------------------------------------------------------------------------
+// SDF 基元（局部坐标，单位 = 珍珠直径）
+// ---------------------------------------------------------------------------
+
+function sdEllipsoid(x, y, z, rx, ry, rz) {
+  const ax = x / rx, ay = y / ry, az = z / rz;
+  const k0 = Math.sqrt(ax * ax + ay * ay + az * az);
+  const bx = ax / rx, by = ay / ry, bz = az / rz;
+  const k1 = Math.sqrt(bx * bx + by * by + bz * bz);
+  if (k1 < 1e-9) return -Math.min(rx, ry, rz);
+  return (k0 * (k0 - 1.0)) / k1;
+}
+
+// 任意朝向圆台胶囊（两端半径 r1 / r2 的圆润锥体）
+function sdRoundCone(px, py, pz, ax, ay, az, bx, by, bz, r1, r2) {
+  const bax = bx - ax, bay = by - ay, baz = bz - az;
+  const l2 = bax * bax + bay * bay + baz * baz;
+  const rr = r1 - r2;
+  const a2 = l2 - rr * rr;
+  const il2 = 1.0 / l2;
+  const pax = px - ax, pay = py - ay, paz = pz - az;
+  const y = pax * bax + pay * bay + paz * baz;
+  const z = y - l2;
+  const qx = pax * l2 - bax * y, qy = pay * l2 - bay * y, qz = paz * l2 - baz * y;
+  const x2 = qx * qx + qy * qy + qz * qz;
+  const y2 = y * y * l2;
+  const z2 = z * z * l2;
+  const k = Math.sign(rr) * rr * rr * x2;
+  if (Math.sign(z) * a2 * z2 > k) return Math.sqrt(x2 + z2) * il2 - r2;
+  if (Math.sign(y) * a2 * y2 < k) return Math.sqrt(x2 + y2) * il2 - r1;
+  return (Math.sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+}
+
+// 竖直圆台：中心在原点，半高 h，底半径 r1，顶半径 r2，棱角圆化 round
+function sdCappedCone(x, y, z, h, r1, r2, round) {
+  const hh = h - round, ra = Math.max(0.01, r1 - round), rb = Math.max(0.01, r2 - round);
+  const qx = Math.sqrt(x * x + z * z);
+  const qy = y;
+  const k2x = rb - ra, k2y = 2.0 * hh;
+  const cax = qx - Math.min(qx, qy < 0 ? ra : rb);
+  const cay = Math.abs(qy) - hh;
+  let t = ((rb - qx) * k2x + (hh - qy) * k2y) / (k2x * k2x + k2y * k2y);
+  t = Math.max(0, Math.min(1, t));
+  const cbx = qx - rb + k2x * t;
+  const cby = qy - hh + k2y * t;
+  const s = cbx < 0 && cay < 0 ? -1.0 : 1.0;
+  return s * Math.sqrt(Math.min(cax * cax + cay * cay, cbx * cbx + cby * cby)) - round;
+}
+
+function smin(a, b, k) {
+  const h = Math.max(k - Math.abs(a - b), 0.0) / k;
+  return Math.min(a, b) - h * h * k * 0.25;
+}
+
+function smax(a, b, k) {
+  return -smin(-a, -b, k);
+}
+
+// ---------------------------------------------------------------------------
+// 造型定义
+// ---------------------------------------------------------------------------
+
+function buildIcosahedron() {
+  const phi = (1 + Math.sqrt(5)) / 2;
+  const raw = [];
+  for (let s1 = -1; s1 <= 1; s1 += 2) {
+    for (let s2 = -1; s2 <= 1; s2 += 2) {
+      raw.push([0, s1, s2 * phi], [s1, s2 * phi, 0], [s2 * phi, 0, s1]);
+    }
+  }
+  const verts = raw.map((v) => {
+    const l = Math.hypot(v[0], v[1], v[2]);
+    return [v[0] / l, v[1] / l, v[2] / l];
+  });
+  const adj = (a, b) => verts[a][0] * verts[b][0] + verts[a][1] * verts[b][1] + verts[a][2] * verts[b][2] > 0.4;
+  const faces = [];
+  for (let a = 0; a < 12; a++) {
+    for (let b = a + 1; b < 12; b++) {
+      if (!adj(a, b)) continue;
+      for (let c = b + 1; c < 12; c++) {
+        if (adj(a, c) && adj(b, c)) {
+          const n = [
+            verts[a][0] + verts[b][0] + verts[c][0],
+            verts[a][1] + verts[b][1] + verts[c][1],
+            verts[a][2] + verts[b][2] + verts[c][2]
+          ];
+          const l = Math.hypot(n[0], n[1], n[2]);
+          faces.push({ v: [a, b, c], n: [n[0] / l, n[1] / l, n[2] / l] });
+        }
+      }
+    }
+  }
+  // 六边形面（= 二十面体面）三染色：共边的面颜色不同
+  const fAdj = faces.map((f, i) => faces
+    .map((g, j) => (j !== i && f.v.filter((v) => g.v.includes(v)).length === 2 ? j : -1))
+    .filter((j) => j >= 0));
+  const col = new Array(faces.length).fill(-1);
+  const solve = (i) => {
+    if (i === faces.length) return true;
+    for (let c = 0; c < 3; c++) {
+      if (fAdj[i].some((j) => col[j] === c)) continue;
+      col[i] = c;
+      if (solve(i + 1)) return true;
+    }
+    col[i] = -1;
+    return false;
+  };
+  solve(0);
+  return { verts, faces, faceColor: col };
+}
+
+const SHAPES = {
+  // ------------------------------------------------------------------ 足球
+  football: {
+    nameZh: '足球',
+    palette: [
+      [0.09, 0.09, 0.12], // 0 黑（五边形）
+      [0.98, 0.98, 0.96], // 1 白
+      [0.95, 0.20, 0.24], // 2 红
+      [0.16, 0.48, 0.98]  // 3 蓝
+    ],
+    bounds: [7.3, 7.3, 7.3],
+    layers: 2,
+    create() {
+      const ico = buildIcosahedron();
+      // 截角二十面体：五边形面心距 / 六边形面心距 = 1.02653
+      const PENT_H = 1.02653;
+      const faceAt = (x, y, z) => {
+        const l = Math.hypot(x, y, z) || 1;
+        const dx = x / l, dy = y / l, dz = z / l;
+        let best = -1e9, bestC = 0;
+        for (let i = 0; i < 12; i++) {
+          const v = ico.verts[i];
+          const s = (dx * v[0] + dy * v[1] + dz * v[2]) / PENT_H;
+          if (s > best) { best = s; bestC = 0; }
+        }
+        for (let i = 0; i < 20; i++) {
+          const n = ico.faces[i].n;
+          const s = dx * n[0] + dy * n[1] + dz * n[2];
+          if (s > best) { best = s; bestC = 1 + ico.faceColor[i]; }
+        }
+        return bestC;
+      };
+      return {
+        sdf: (x, y, z) => Math.sqrt(x * x + y * y + z * z) - 7.0,
+        paint: (p, layer) => {
+          // 外层：经典黑白足球（12 块黑色五边形 + 连成一片的白色六边形）
+          if (layer === 0) return faceAt(p.x, p.y, p.z) === 0 ? 0 : 1;
+          // 内层：彩色足球（六边形三染色，换轴避免与外层纹路上下对齐）
+          return (faceAt(p.z, p.x, -p.y) + 2) % 4;
+        }
+      };
+    }
+  },
+
+  // ------------------------------------------------------------------ 爱心
+  heart: {
+    nameZh: '爱心',
+    palette: [
+      [0.95, 0.14, 0.26], // 0 红
+      [1.0, 0.56, 0.74],  // 1 粉
+      [0.99, 0.96, 0.95], // 2 白
+      [1.0, 0.80, 0.20]   // 3 金
+    ],
+    bounds: [6.0, 5.9, 3.4],
+    layers: 2,
+    patchColors: [0, 1, 2],
+    innerPatchColors: [3, 1, 0],
+    patchSize: 15,
+    create() {
+      const ZS = 1.16; // 压扁厚度
+      return {
+        sdf: (x, y, z) => {
+          const zz = z * ZS;
+          const a = sdRoundCone(x, y, zz, 2.15, 1.95, 0, 0, -4.75, 0, 3.4, 0.6);
+          const b = sdRoundCone(x, y, zz, -2.15, 1.95, 0, 0, -4.75, 0, 3.4, 0.6);
+          return Math.min(a, b) / ZS;
+        },
+        paint: () => -1
+      };
+    }
+  },
+
+  // ------------------------------------------------------------------ 蘑菇
+  mushroom: {
+    nameZh: '蘑菇',
+    palette: [
+      [0.93, 0.15, 0.17], // 0 红伞盖
+      [0.99, 0.97, 0.93], // 1 白斑点 / 菌柄
+      [0.98, 0.72, 0.50], // 2 菌褶
+      [0.36, 0.80, 0.30]  // 3 草地
+    ],
+    bounds: [5.7, 6.1, 5.7],
+    layers: 2,
+    innerPatchColors: [2, 0, 3],
+    patchSize: 20,
+    create() {
+      const CAP_Y = 1.75;
+      const dots = [{ d: [0, 1, 0], r: 0.36 }];
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + 0.3;
+        dots.push({ d: [Math.sin(0.82) * Math.cos(a), Math.cos(0.82), Math.sin(0.82) * Math.sin(a)], r: 0.27 });
+      }
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2 + 0.75;
+        dots.push({ d: [Math.sin(1.30) * Math.cos(a), Math.cos(1.30), Math.sin(1.30) * Math.sin(a)], r: 0.21 });
+      }
+      const cap = (x, y, z) => smax(sdEllipsoid(x, y - CAP_Y, z, 5.4, 4.0, 5.4), CAP_Y - y, 0.5);
+      const stem = (x, y, z) => sdRoundCone(x, y, z, 0, 1.9, 0, 0, -3.3, 0, 1.8, 2.45);
+      return {
+        sdf: (x, y, z) => Math.min(cap(x, y, z), stem(x, y, z)),
+        paint: (p, layer) => {
+          if (layer > 0) return -1;
+          if (stem(p.x, p.y, p.z) < cap(p.x, p.y, p.z)) {
+            return p.y < -4.3 ? 3 : 1;
+          }
+          if (p.ny < -0.45) return 2;
+          const ex = p.x / 5.4, ey = (p.y - CAP_Y) / 4.0, ez = p.z / 5.4;
+          const l = Math.hypot(ex, ey, ez) || 1;
+          for (let i = 0; i < dots.length; i++) {
+            const d = dots[i].d;
+            const c = (ex * d[0] + ey * d[1] + ez * d[2]) / l;
+            if (c > Math.cos(dots[i].r)) return 1;
+          }
+          return 0;
+        }
+      };
+    }
+  },
+
+  // ------------------------------------------------------------------ 圣诞树
+  tree: {
+    nameZh: '圣诞树',
+    palette: [
+      [0.10, 0.62, 0.28], // 0 松绿
+      [0.99, 0.98, 0.97], // 1 雪白
+      [0.95, 0.17, 0.22], // 2 红彩球
+      [1.0, 0.83, 0.16],  // 3 金星 / 黄彩球
+      [0.20, 0.56, 1.0],  // 4 蓝彩球
+      [0.56, 0.34, 0.17]  // 5 树干
+    ],
+    bounds: [4.9, 6.2, 4.9],
+    layers: 2,
+    innerPatchColors: [0, 5, 3],
+    patchSize: 18,
+    create() {
+      const tiers = [
+        { cy: -2.4, h: 1.5, r1: 4.5, r2: 1.9, n: 6, a0: 0.2 },
+        { cy: 0.0, h: 1.5, r1: 3.6, r2: 1.3, n: 5, a0: 0.9 },
+        { cy: 2.6, h: 1.7, r1: 2.75, r2: 0.3, n: 3, a0: 0.5 }
+      ];
+      const tierSdf = (t, x, y, z) => sdCappedCone(x, y - t.cy, z, t.h, t.r1, t.r2, 0.25);
+      const trunk = (x, y, z) => sdCappedCone(x, y + 4.7, z, 0.9, 1.25, 1.25, 0.2);
+      const star = (x, y, z) => Math.hypot(x, y - 4.9, z) - 0.95;
+      // 彩球：每层圆台侧面中部等角分布
+      const ornaments = [];
+      let oc = 0;
+      tiers.forEach((t) => {
+        const f = 0.42;
+        const oy = t.cy - t.h + 2 * t.h * f;
+        const or = t.r1 + (t.r2 - t.r1) * f;
+        for (let i = 0; i < t.n; i++) {
+          const a = t.a0 + (i / t.n) * Math.PI * 2;
+          ornaments.push({ x: Math.cos(a) * or, y: oy, z: Math.sin(a) * or, c: 2 + (oc++ % 3) });
+        }
+      });
+      return {
+        sdf: (x, y, z) => {
+          let d = Math.min(trunk(x, y, z), star(x, y, z));
+          for (let i = 0; i < tiers.length; i++) d = Math.min(d, tierSdf(tiers[i], x, y, z));
+          return d;
+        },
+        paint: (p, layer) => {
+          if (layer > 0) return -1;
+          let best = trunk(p.x, p.y, p.z), part = -1;
+          const ds = star(p.x, p.y, p.z);
+          if (ds < best) { best = ds; part = -2; }
+          for (let i = 0; i < tiers.length; i++) {
+            const d = tierSdf(tiers[i], p.x, p.y, p.z);
+            if (d < best) { best = d; part = i; }
+          }
+          if (part === -1) return 5;
+          if (part === -2) return 3;
+          const t = tiers[part];
+          if (p.y < t.cy - t.h + 0.8) return 1; // 每层裙边积雪
+          for (let i = 0; i < ornaments.length; i++) {
+            const o = ornaments[i];
+            const dx = p.x - o.x, dy = p.y - o.y, dz = p.z - o.z;
+            if (dx * dx + dy * dy + dz * dz < 1.12 * 1.12) return o.c;
+          }
+          return 0;
+        }
+      };
+    }
+  },
+
+  // ------------------------------------------------------------------ 小黄鸭
+  duck: {
+    nameZh: '小黄鸭',
+    palette: [
+      [1.0, 0.86, 0.12],  // 0 鸭黄
+      [1.0, 0.48, 0.08],  // 1 橙（嘴 / 翅膀）
+      [0.10, 0.10, 0.14], // 2 黑眼睛
+      [0.93, 0.17, 0.25], // 3 红围巾
+      [0.99, 0.97, 0.94], // 4 白肚皮
+      [0.18, 0.52, 0.98]  // 5 蓝帽子
+    ],
+    bounds: [4.6, 5.4, 6.2],
+    layers: 2,
+    innerPatchColors: [1, 4, 3],
+    patchSize: 18,
+    keepSmall: [2],
+    create() {
+      const ZO = -0.25;
+      const body = (x, y, z) => sdEllipsoid(x, y + 1.5, z - 0.5 - ZO, 3.5, 2.9, 4.3);
+      const head = (x, y, z) => Math.hypot(x, y - 2.5, z + 1.5 - ZO) - 2.55;
+      const beak = (x, y, z) => sdEllipsoid(x, y - 2.1, z + 4.1 - ZO, 1.35, 0.62, 1.25);
+      const tail = (x, y, z) => sdRoundCone(x, y, z, 0, -0.6, 4.2 + ZO, 0, 1.2, 5.4 + ZO, 1.1, 0.45);
+      const wing = (x, y, z) => sdEllipsoid(Math.abs(x) - 3.3, y + 1.3, z - 0.9 - ZO, 0.85, 1.7, 2.5);
+      const torso = (x, y, z) => smin(body(x, y, z), head(x, y, z), 0.8);
+      return {
+        sdf: (x, y, z) => Math.min(
+          Math.min(torso(x, y, z), beak(x, y, z)),
+          Math.min(tail(x, y, z), wing(x, y, z))
+        ),
+        paint: (p, layer) => {
+          if (layer > 0) return -1;
+          const x = p.x, y = p.y, z = p.z;
+          const dT = Math.min(torso(x, y, z), tail(x, y, z));
+          if (beak(x, y, z) < dT && beak(x, y, z) < wing(x, y, z)) return 1;
+          if (wing(x, y, z) < dT) return 1;
+          // 眼睛
+          const ez = -3.62 + ZO;
+          const e1 = Math.hypot(Math.abs(x) - 1.15, y - 3.34, z - ez);
+          if (e1 < 0.62) return 2;
+          // 帽子
+          if (y > 4.15) return 5;
+          // 围巾（脖子一圈）
+          if (y > 0.3 && y < 1.3 && Math.hypot(x, y - 0.8, z + 1.3 - ZO) < 2.9) return 3;
+          // 肚皮
+          if (y < -3.45) return 4;
+          return 0;
+        }
+      };
+    }
+  }
+};
+
+// 关卡登记：名字即 engine.startLevel(level, cfgName) 的 cfgName
+const SHAPE_LEVEL_CONFIGS = {
+  Shape_01_Football: { name: 'Shape_01_Football', shape: 'football', world: 1, seed: 11 },
+  Shape_02_Heart: { name: 'Shape_02_Heart', shape: 'heart', world: 7, seed: 22 },
+  Shape_03_Mushroom: { name: 'Shape_03_Mushroom', shape: 'mushroom', world: 4, seed: 33 },
+  Shape_04_Tree: { name: 'Shape_04_Tree', shape: 'tree', world: 12, seed: 44 },
+  Shape_05_Duck: { name: 'Shape_05_Duck', shape: 'duck', world: 2, seed: 55 }
+};
+const SHAPE_LEVEL_NAMES = Object.keys(SHAPE_LEVEL_CONFIGS);
+
+// ---------------------------------------------------------------------------
+// 曲面采样
+// ---------------------------------------------------------------------------
+
+function gridKey(ix, iy, iz) {
+  return (ix + 512) + (iy + 512) * 1024 + (iz + 512) * 1048576;
+}
+
+function gradient(sdf, x, y, z, out) {
+  const e = 0.01;
+  const a = sdf(x + e, y - e, z - e);
+  const b = sdf(x - e, y - e, z + e);
+  const c = sdf(x - e, y + e, z - e);
+  const d = sdf(x + e, y + e, z + e);
+  const k = 1 / (4 * e);
+  out[0] = (a - b - c + d) * k;
+  out[1] = (-a - b + c + d) * k;
+  out[2] = (-a + b - c + d) * k;
+}
+
+function projectToLevel(sdf, level, p, iters, g) {
+  let d = sdf(p[0], p[1], p[2]) - level;
+  for (let it = 0; it < iters; it++) {
+    if (Math.abs(d) < 0.003) return true;
+    gradient(sdf, p[0], p[1], p[2], g);
+    const g2 = g[0] * g[0] + g[1] * g[1] + g[2] * g[2];
+    if (g2 < 1e-8) return false;
+    let s = d / g2;
+    if (s > 0.8) s = 0.8; else if (s < -0.8) s = -0.8;
+    p[0] -= g[0] * s;
+    p[1] -= g[1] * s;
+    p[2] -= g[2] * s;
+    d = sdf(p[0], p[1], p[2]) - level;
+  }
+  return Math.abs(d) < 0.02;
+}
+
+function sampleIsoSurface(sdf, level, bounds, rng) {
+  const dmin = SPACING * 0.75;
+  const dminSq = dmin * dmin;
+  const cell = dmin;
+  const grid = new Map();
+  const pts = [];
+  const p = [0, 0, 0];
+  const g = [0, 0, 0];
+  const bx = bounds[0] + 0.6, by = bounds[1] + 0.6, bz = bounds[2] + 0.6;
+  const BATCH = 4000;
+  for (let round = 0; round < 40; round++) {
+    let added = 0;
+    for (let k = 0; k < BATCH; k++) {
+      p[0] = (rng() * 2 - 1) * bx;
+      p[1] = (rng() * 2 - 1) * by;
+      p[2] = (rng() * 2 - 1) * bz;
+      const d0 = sdf(p[0], p[1], p[2]) - level;
+      if (d0 > 1.0 || d0 < -1.0) continue;
+      if (!projectToLevel(sdf, level, p, 7, g)) continue;
+      const ix = Math.floor(p[0] / cell), iy = Math.floor(p[1] / cell), iz = Math.floor(p[2] / cell);
+      let ok = true;
+      for (let a = -1; a <= 1 && ok; a++) {
+        for (let b = -1; b <= 1 && ok; b++) {
+          for (let c = -1; c <= 1 && ok; c++) {
+            const bucket = grid.get(gridKey(ix + a, iy + b, iz + c));
+            if (!bucket) continue;
+            for (let i = 0; i < bucket.length; i++) {
+              const q = pts[bucket[i]];
+              const dx = q.x - p[0], dy = q.y - p[1], dz = q.z - p[2];
+              if (dx * dx + dy * dy + dz * dz < dminSq) { ok = false; break; }
+            }
+          }
+        }
+      }
+      if (!ok) continue;
+      const key = gridKey(ix, iy, iz);
+      const bucket = grid.get(key);
+      if (bucket) bucket.push(pts.length); else grid.set(key, [pts.length]);
+      pts.push({ x: p[0], y: p[1], z: p[2], nx: 0, ny: 1, nz: 0 });
+      added++;
+    }
+    if (added < 3) break;
+  }
+  return pts;
+}
+
+function buildBuckets(pts, cell) {
+  const grid = new Map();
+  for (let i = 0; i < pts.length; i++) {
+    const key = gridKey(Math.floor(pts[i].x / cell), Math.floor(pts[i].y / cell), Math.floor(pts[i].z / cell));
+    const b = grid.get(key);
+    if (b) b.push(i); else grid.set(key, [i]);
+  }
+  return grid;
+}
+
+function forEachNear(pts, grid, cell, i, radiusSq, fn) {
+  const p = pts[i];
+  const ix = Math.floor(p.x / cell), iy = Math.floor(p.y / cell), iz = Math.floor(p.z / cell);
+  for (let a = -1; a <= 1; a++) {
+    for (let b = -1; b <= 1; b++) {
+      for (let c = -1; c <= 1; c++) {
+        const bucket = grid.get(gridKey(ix + a, iy + b, iz + c));
+        if (!bucket) continue;
+        for (let k = 0; k < bucket.length; k++) {
+          const j = bucket[k];
+          if (j === i) continue;
+          const q = pts[j];
+          const dx = p.x - q.x, dy = p.y - q.y, dz = p.z - q.z;
+          const dSq = dx * dx + dy * dy + dz * dz;
+          if (dSq < radiusSq) fn(j, dx, dy, dz, dSq);
+        }
+      }
+    }
+  }
+}
+
+// 斥力松弛：把泊松盘点推成近似六边形排布，再投影回曲面
+function relaxOnSurface(pts, sdf, level, iters) {
+  const R = SPACING * 1.4;
+  const RSq = R * R;
+  const tmp = [0, 0, 0];
+  const g = [0, 0, 0];
+  const mv = new Float32Array(pts.length * 3);
+  for (let it = 0; it < iters; it++) {
+    const grid = buildBuckets(pts, R);
+    for (let i = 0; i < pts.length; i++) {
+      let fx = 0, fy = 0, fz = 0;
+      forEachNear(pts, grid, R, i, RSq, (j, dx, dy, dz, dSq) => {
+        const d = Math.sqrt(dSq) || 1e-4;
+        const u = 1 - d / R;
+        const w = (u * u) / d;
+        fx += dx * w; fy += dy * w; fz += dz * w;
+      });
+      const step = SPACING * 0.9;
+      let mx = fx * step, my = fy * step, mz = fz * step;
+      const ml = Math.sqrt(mx * mx + my * my + mz * mz);
+      if (ml > 0.28) { const s = 0.28 / ml; mx *= s; my *= s; mz *= s; }
+      mv[i * 3] = mx; mv[i * 3 + 1] = my; mv[i * 3 + 2] = mz;
+    }
+    for (let i = 0; i < pts.length; i++) {
+      tmp[0] = pts[i].x + mv[i * 3];
+      tmp[1] = pts[i].y + mv[i * 3 + 1];
+      tmp[2] = pts[i].z + mv[i * 3 + 2];
+      if (projectToLevel(sdf, level, tmp, 4, g)) {
+        pts[i].x = tmp[0]; pts[i].y = tmp[1]; pts[i].z = tmp[2];
+      }
+    }
+  }
+  for (let i = 0; i < pts.length; i++) {
+    gradient(sdf, pts[i].x, pts[i].y, pts[i].z, g);
+    const l = Math.hypot(g[0], g[1], g[2]) || 1;
+    pts[i].nx = g[0] / l; pts[i].ny = g[1] / l; pts[i].nz = g[2] / l;
+  }
+}
+
+function buildNeighborLists(pts) {
+  const grid = buildBuckets(pts, NEIGHBOR_DIST);
+  const lists = new Array(pts.length);
+  for (let i = 0; i < pts.length; i++) {
+    const arr = [];
+    forEachNear(pts, grid, NEIGHBOR_DIST, i, NEIGHBOR_DIST * NEIGHBOR_DIST, (j) => arr.push(j));
+    lists[i] = arr;
+  }
+  return lists;
+}
+
+// ---------------------------------------------------------------------------
+// 上色：造型 paint() 返回调色板下标；返回 -1 的点做"拼布"分片（相邻片不同色）
+// ---------------------------------------------------------------------------
+
+function paintLayer(shape, inst, pts, neighbors, layer, rng) {
+  const col = new Int16Array(pts.length);
+  const patchPts = [];
+  for (let i = 0; i < pts.length; i++) {
+    const c = inst.paint(pts[i], layer);
+    col[i] = typeof c === 'number' ? c : -1;
+    if (col[i] < 0) patchPts.push(i);
+  }
+
+  if (patchPts.length > 0) {
+    const nColors = shape.palette.length;
+    let pal = (layer > 0 ? shape.innerPatchColors : shape.patchColors) || shape.patchColors || shape.innerPatchColors;
+    if (!pal || pal.length === 0) pal = shape.palette.map((_, i) => i);
+    const K = Math.max(2, Math.round(patchPts.length / (shape.patchSize || 20)));
+    // 最远点采样选片心
+    const seeds = [];
+    const dist = new Float32Array(patchPts.length).fill(Infinity);
+    const owner = new Int16Array(patchPts.length);
+    let cur = 0;
+    for (let k = 1; k < patchPts.length; k++) {
+      if (pts[patchPts[k]].y > pts[patchPts[cur]].y) cur = k;
+    }
+    for (let s = 0; s < K; s++) {
+      seeds.push(cur);
+      const sp = pts[patchPts[cur]];
+      let far = 0, farD = -1;
+      for (let k = 0; k < patchPts.length; k++) {
+        const q = pts[patchPts[k]];
+        const dx = q.x - sp.x, dy = q.y - sp.y, dz = q.z - sp.z;
+        const d = dx * dx + dy * dy + dz * dz;
+        if (d < dist[k]) { dist[k] = d; owner[k] = s; }
+        if (dist[k] > farD) { farD = dist[k]; far = k; }
+      }
+      cur = far;
+    }
+    const patchOf = new Int16Array(pts.length).fill(-1);
+    for (let k = 0; k < patchPts.length; k++) patchOf[patchPts[k]] = owner[k];
+    // 片邻接 + 贪心染色
+    const adjPatch = seeds.map(() => new Set());
+    const adjFixed = seeds.map(() => new Set());
+    for (let k = 0; k < patchPts.length; k++) {
+      const i = patchPts[k];
+      const nb = neighbors[i];
+      for (let n = 0; n < nb.length; n++) {
+        const j = nb[n];
+        if (patchOf[j] >= 0) {
+          if (patchOf[j] !== patchOf[i]) adjPatch[patchOf[i]].add(patchOf[j]);
+        } else {
+          adjFixed[patchOf[i]].add(col[j]);
+        }
+      }
+    }
+    const patchCol = new Int16Array(seeds.length).fill(-1);
+    const usage = new Array(nColors).fill(0);
+    for (let s = 0; s < seeds.length; s++) {
+      let best = pal[0], bestScore = Infinity;
+      for (let c = 0; c < pal.length; c++) {
+        const cc = pal[c];
+        let conflicts = adjFixed[s].has(cc) ? 1 : 0;
+        adjPatch[s].forEach((t) => { if (patchCol[t] === cc) conflicts++; });
+        const score = conflicts * 1000 + usage[cc] + rng() * 0.5;
+        if (score < bestScore) { bestScore = score; best = cc; }
+      }
+      patchCol[s] = best;
+      usage[best]++;
+    }
+    for (let k = 0; k < patchPts.length; k++) col[patchPts[k]] = patchCol[owner[k]];
+  }
+
+  // 清理孤立单颗杂色（造型边界锯齿），keepSmall 里的颜色（如眼睛）除外
+  const keep = shape.keepSmall || [];
+  for (let i = 0; i < pts.length; i++) {
+    const nb = neighbors[i];
+    if (nb.length === 0 || keep.indexOf(col[i]) >= 0) continue;
+    let same = 0;
+    const cnt = {};
+    for (let n = 0; n < nb.length; n++) {
+      const c = col[nb[n]];
+      if (c === col[i]) same++;
+      else if (keep.indexOf(c) < 0) cnt[c] = (cnt[c] || 0) + 1;
+    }
+    if (same > 0) continue;
+    let bestC = col[i], bestN = 0;
+    Object.keys(cnt).forEach((c) => { if (cnt[c] > bestN) { bestN = cnt[c]; bestC = Number(c); } });
+    col[i] = bestC;
+  }
+  return col;
+}
+
+// ---------------------------------------------------------------------------
+// 对外接口
+// ---------------------------------------------------------------------------
+
+const _geoCache = Object.create(null);
+
+/**
+ * 生成（并缓存）造型几何：
+ * { shapeId, nameZh, palette, layers: [{ points:[{x,y,z,nx,ny,nz}], neighbors:[[idx]], colorIdx:Int16Array,
+ *   boundR, minR }], pearlRadius, layerGap, originDepth }
+ */
+function buildShapeGeometry(shapeId, seed = 1, maxLayers = 0) {
+  const shape = SHAPES[shapeId];
+  if (!shape) return null;
+  const wantLayers = Math.max(1, Math.min(4, maxLayers || shape.layers || 2));
+  const key = `${shapeId}|${seed}|${wantLayers}`;
+  if (_geoCache[key]) return _geoCache[key];
+
+  const rng = seededRandom((seed || 1) * 7919 + 13);
+  const inst = shape.create(rng);
+  const layers = [];
+  for (let l = 0; l < wantLayers; l++) {
+    const level = -l * LAYER_GAP;
+    const pts = sampleIsoSurface(inst.sdf, level, shape.bounds, rng);
+    if (pts.length < (l === 0 ? 4 : 16)) break;
+    relaxOnSurface(pts, inst.sdf, level, 40);
+    const neighbors = buildNeighborLists(pts);
+    const colorIdx = paintLayer(shape, inst, pts, neighbors, l, rng);
+    let boundR = 0, minR = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const r = Math.hypot(pts[i].x, pts[i].y, pts[i].z);
+      if (r > boundR) boundR = r;
+      if (r < minR) minR = r;
+    }
+    layers.push({ points: pts, neighbors, colorIdx, boundR, minR });
+  }
+
+  const geo = {
+    shapeId,
+    nameZh: shape.nameZh,
+    palette: shape.palette,
+    layers,
+    pearlRadius: PEARL_RADIUS,
+    layerGap: LAYER_GAP,
+    // 旋转中心（球心星核位置）到最内层珍珠内侧的净空，用来决定星核能否放下及其大小
+    originDepth: -inst.sdf(0, 0, 0) - (layers.length - 1) * LAYER_GAP - PEARL_RADIUS
+  };
+  _geoCache[key] = geo;
+  return geo;
+}
+
+module.exports = {
+  SHAPES,
+  SHAPE_LEVEL_CONFIGS,
+  SHAPE_LEVEL_NAMES,
+  SHAPE_SPACING: SPACING,
+  SHAPE_LAYER_GAP: LAYER_GAP,
+  buildShapeGeometry
+};
+
+});
+
 __register('./levels', function(module, exports, require) {
 /**
  * Official Pearl Gem (com.asmallgame.pearlgem) Level, World, Gem, Shop & Event Resolver
@@ -5406,6 +6105,7 @@ __register('./levels', function(module, exports, require) {
 const OFFICIAL_DATA = require('./official_data');
 const { rgb01ToHex, seededRandom } = require('./math3d');
 const { OFFICIAL_ATOMIC_CONFIG, GLOBAL_MOD_HOOKS } = require('./mod_config');
+const { SHAPES, SHAPE_LEVEL_CONFIGS, SHAPE_LEVEL_NAMES, buildShapeGeometry } = require('./shape_levels');
 
 const { WORLDS, LEVEL_CONFIGS, GEMS, RARITIES, TUTORIALS, TIPS } = OFFICIAL_DATA;
 
@@ -5747,7 +6447,11 @@ function computeDynamicShotBudgetFromSphere(sphere, desc, modConfig = null) {
  */
 function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, activeWorldIndex = null, modConfig = null) {
   const range = getWorldRangeForGlobalLevel(globalLevel);
-  const world = activeWorldIndex ? getWorldByIndex(activeWorldIndex) : range.world;
+  // 造型关（shape_levels.js）：非原版扩展关卡，自带星球背景，不占用主线关卡序号
+  const shapeCfg = explicitConfigName ? (SHAPE_LEVEL_CONFIGS[explicitConfigName] || null) : null;
+  const world = activeWorldIndex
+    ? getWorldByIndex(activeWorldIndex)
+    : (shapeCfg && shapeCfg.world ? getWorldByIndex(shapeCfg.world) : range.world);
   const levelInWorld = Math.max(1, globalLevel - range.startGlobal + 1);
 
   let cfgName = explicitConfigName;
@@ -5764,7 +6468,7 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
       BONUS_LEVEL_NAMES[Math.max(0, (world.index || 1) - 1) % BONUS_LEVEL_NAMES.length];
   }
 
-  const rawCfg = cfgName ? (LEVEL_CONFIGS[cfgName] || SNAKE_CONFIGS[cfgName] || null) : null;
+  const rawCfg = shapeCfg || (cfgName ? (LEVEL_CONFIGS[cfgName] || SNAKE_CONFIGS[cfgName] || null) : null);
   const rng = seededRandom(rawCfg && rawCfg.seed ? rawCfg.seed * 997 + globalLevel : globalLevel * 1337 + 17);
 
   let layersCount = 2;
@@ -5831,6 +6535,10 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     forceBall = rawCfg.forceBall || null;
     gift = rawCfg.gift || null;
     parallax = !!rawCfg.parallax;
+    if (shapeCfg) {
+      noDouble = !!rawCfg.noDouble;
+      paletteRgb = (SHAPES[shapeCfg.shape] && SHAPES[shapeCfg.shape].palette) || paletteRgb;
+    }
   } else {
     // LevelConfig.GenerateLevelParameters(levelIndex, worldIndex, worldConfig):
     const wIdx = world.index || 1;
@@ -5965,6 +6673,38 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     });
   }
 
+  // 造型关：用隐式曲面采样出的几何替换球壳层定义（radius = 该层包围球半径，rMin = 最近珍珠到旋转中心距离）
+  let shapeGeo = null;
+  let shapeStarScale = 0;
+  if (shapeCfg) {
+    shapeGeo = buildShapeGeometry(shapeCfg.shape, shapeCfg.seed || 1, shapeCfg.layers || 0);
+  }
+  if (shapeGeo) {
+    const shapeRot = ((shapeCfg.rotDeg !== undefined ? shapeCfg.rotDeg : 14.0) * Math.PI) / 180;
+    layers.length = 0;
+    for (let l = 0; l < shapeGeo.layers.length; l++) {
+      const gl = shapeGeo.layers[l];
+      layers.push({
+        index: l,
+        radius: gl.boundR,
+        rMin: gl.minR,
+        count: gl.points.length,
+        seeds: 0,
+        rotSpeedRad: shapeRot
+      });
+    }
+    layersCount = layers.length;
+    startRadius = layers[layers.length - 1].radius;
+    // 星核必须藏在最内层里面：按旋转中心处的净空决定大小，放不下就不设星核
+    const room = shapeGeo.originDepth;
+    if (rawCfg.noStar || room < 1.0) {
+      noStar = true;
+    } else {
+      shapeStarScale = Math.min(3.0, (room + 0.25) / 1.12);
+    }
+  }
+  const maxOuterRadiusFinal = shapeGeo ? layers[0].radius : maxOuterRadius;
+
   // Hexagonal Shields (glass ice & brushed steel; Warson corrupted purple shields on levelType === 3)
   let glassShields = 0;
   let metalShields = 0;
@@ -6046,6 +6786,10 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     } else if (explicitConfigName.startsWith('Snake_')) {
       displayTitleZh = '贪吃蛇特殊关';
       displayTitleEn = displayTitleZh;
+    } else if (shapeCfg) {
+      modeTag = 'shape';
+      displayTitleZh = `造型关 · ${(SHAPES[shapeCfg.shape] && SHAPES[shapeCfg.shape].nameZh) || ''}`;
+      displayTitleEn = displayTitleZh;
     }
   } else if (levelType === 1) {
     displayTitleZh = '金币奖励关';
@@ -6074,7 +6818,12 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     patternType,
     rotPattern,
     startRadius,
-    maxOuterRadius,
+    maxOuterRadius: maxOuterRadiusFinal,
+    shapeId: shapeGeo ? shapeCfg.shape : null,
+    shapeSeed: shapeGeo ? (shapeCfg.seed || 1) : 0,
+    shapeLayers: shapeGeo ? (shapeCfg.layers || 0) : 0,
+    shapeIndex: shapeGeo ? SHAPE_LEVEL_NAMES.indexOf(shapeCfg.name) : -1,
+    starScaleOverride: shapeStarScale,
     colors,
     shots,
     infiniteShots,
@@ -6298,6 +7047,8 @@ module.exports = {
   DAILY_HARD_NAMES,
   GEM_QUEST_NAMES,
   HOLIDAY_SPARKLE_NAMES,
+  SHAPE_LEVEL_CONFIGS,
+  SHAPE_LEVEL_NAMES,
   SHOP_CAPSULES,
   CONTINUE_COST_COINS,
   CONTINUE_EXTRA_SHOTS,
@@ -7306,6 +8057,7 @@ const {
   getCustomPattern,
   GLOBAL_MOD_HOOKS
 } = require('./mod_config');
+const { buildShapeGeometry } = require('./shape_levels');
 
 const COLOR_BOMB_COLOR = { id: 'colorbomb', rgb: [0.35, 0.96, 1.0], hex: '#59f5ff' };
 const SHIELD_COS_HALF = Math.cos(0.31);
@@ -7398,7 +8150,9 @@ class PearlSphere {
     // Exact Core Star scale from Level.Build: 0.25 * startRadius + 1.75
     const starSlope = Number.isFinite(sphCfg.coreStarScaleSlope) ? sphCfg.coreStarScaleSlope : 0.25;
     const starIntercept = Number.isFinite(sphCfg.coreStarScaleIntercept) ? sphCfg.coreStarScaleIntercept : 1.75;
-    this.starScale = starSlope * (descriptor.startRadius || 4) + starIntercept;
+    this.starScale = descriptor.starScaleOverride > 0
+      ? descriptor.starScaleOverride
+      : starSlope * (descriptor.startRadius || 4) + starIntercept;
     this.starRadius = this.starScale * 0.85;
     this.starActivated = false;
     this.starSpawnScale = 0;
@@ -7409,6 +8163,11 @@ class PearlSphere {
     const rng = seededRandom((descriptor.seed || 1) + 7919);
     if (this.isSnakeLevel) {
       this._buildSnakeChain(rng);
+    } else if (descriptor.shapeId) {
+      // 造型关：整体绕竖直轴自转，保持造型端正
+      this.rotAxis = { x: 0, y: 1, z: 0 };
+      this._buildShapeLayers();
+      this._buildSatellites();
     } else {
       this._buildLayers(rng);
       this._buildHexShields(rng);
@@ -7955,6 +8714,118 @@ class PearlSphere {
     }
 
     this._buildInnerLayerNeighborZones();
+    this.totalPearls = this.pearls.length;
+  }
+
+  /**
+   * 造型关（shape_levels.js）：珍珠贴在隐式曲面上，而不是斐波那契球壳上。
+   * 规则与球形关一致：同层相邻同色 = ColorZone；外层色区的内层支撑全部消失后整片掉落。
+   * 区别：支撑关系按真实距离（而非径向投影）计算；完全没有内层支撑的细小部位标记 anchored，
+   * 不参与悬空掉落，必须直接命中。
+   */
+  _buildShapeLayers() {
+    const desc = this.descriptor;
+    const geo = buildShapeGeometry(desc.shapeId, desc.shapeSeed || 1, desc.shapeLayers || 0);
+    const colors = this.colors;
+    let idCounter = 1;
+    this._zoneIdCounter = 1;
+    if (!geo) return;
+
+    for (let lIdx = 0; lIdx < geo.layers.length && lIdx < desc.layers.length; lIdx++) {
+      const gl = geo.layers[lIdx];
+      const boundR = desc.layers[lIdx].radius || gl.boundR;
+      const shellList = [];
+      for (let i = 0; i < gl.points.length; i++) {
+        const pt = gl.points[i];
+        const lp = { x: pt.x, y: pt.y, z: pt.z };
+        const p = {
+          id: idCounter++,
+          layer: lIdx,
+          shellRadius: boundR,
+          radius: geo.pearlRadius,
+          localPos: lp,
+          localDir: { x: pt.nx, y: pt.ny, z: pt.nz },
+          worldPos: { x: this.center.x + lp.x, y: this.center.y + lp.y, z: this.center.z + lp.z },
+          worldDir: { x: lp.x / boundR, y: lp.y / boundR, z: lp.z / boundR },
+          color: colors[gl.colorIdx[i] % colors.length] || colors[0],
+          hasRock: false,
+          isRock: false,
+          isColorBomb: false,
+          isPropeller: false,
+          isBonusCoin: false,
+          coinCollected: false,
+          coinSpin: 0,
+          alive: true,
+          highlight: 0,
+          ionized: 0,
+          colorZone: null,
+          neighbors: []
+        };
+        shellList.push(p);
+        this.pearls.push(p);
+        this.clearableTotal++;
+      }
+      for (let i = 0; i < shellList.length; i++) {
+        const nb = gl.neighbors[i];
+        for (let k = 0; k < nb.length; k++) shellList[i].neighbors.push(shellList[nb[k]]);
+      }
+      this.layerPearls.push(shellList);
+
+      const seen = new Set();
+      const shellZones = [];
+      for (let i = 0; i < shellList.length; i++) {
+        const start = shellList[i];
+        if (seen.has(start.id)) continue;
+        const comp = [start];
+        seen.add(start.id);
+        let head = 0;
+        while (head < comp.length) {
+          const cur = comp[head++];
+          for (let k = 0; k < cur.neighbors.length; k++) {
+            const nb = cur.neighbors[k];
+            if (!seen.has(nb.id) && nb.color.id === start.color.id) {
+              seen.add(nb.id);
+              comp.push(nb);
+            }
+          }
+        }
+        const cz = this._createColorZoneObject(lIdx, start.color, comp, boundR);
+        // 造型版"极区"：整片色区的表面法线都朝正上 / 正下（与竖直轴夹角 < 20°），
+        // 自转永远转不到正面，只能擦边命中；沿用原版 AdjustColorForPoleBias 降低发到该颜色的概率
+        let allUp = true, allDown = true;
+        for (let k = 0; k < comp.length; k++) {
+          if (comp[k].localDir.y < POLE_COS_20_DEG) allUp = false;
+          if (comp[k].localDir.y > -POLE_COS_20_DEG) allDown = false;
+        }
+        cz.isPole = allUp || allDown;
+        cz.isPoleZone = cz.isPole;
+        shellZones.push(cz);
+        this.colorZones.push(cz);
+      }
+      this.layerColorZones.push(shellZones);
+    }
+
+    // 跨层支撑：外层珍珠与内层珍珠球心距 <= 1.5 * 层距即视为被其支撑
+    const supportDist = (geo.layerGap || 1.0) * 1.5;
+    const supportSq = supportDist * supportDist;
+    for (let l = 0; l < this.layerColorZones.length - 1; l++) {
+      const outerZones = this.layerColorZones[l];
+      const innerPearls = this.layerPearls[l + 1];
+      for (let z = 0; z < outerZones.length; z++) {
+        const cz = outerZones[z];
+        cz.innerLayerNeighborZones = new Set();
+        for (let a = 0; a < cz.pearls.length; a++) {
+          const op = cz.pearls[a].localPos;
+          for (let b = 0; b < innerPearls.length; b++) {
+            const ip = innerPearls[b];
+            if (ip.colorZone && distSq3(op, ip.localPos) <= supportSq) {
+              cz.innerLayerNeighborZones.add(ip.colorZone);
+            }
+          }
+        }
+        if (cz.innerLayerNeighborZones.size === 0) cz.anchored = true;
+      }
+    }
     this.totalPearls = this.pearls.length;
   }
 
@@ -8906,6 +9777,7 @@ class PearlSphere {
       const zones = this.layerColorZones[l] || [];
       for (let z = 0; z < zones.length; z++) {
         const cz = zones[z];
+        if (cz.anchored) continue; // 造型关：无内层支撑的细小部位不悬空掉落
         if (!cz.pearls.some((p) => p.alive)) continue;
         const innerSet = cz.innerLayerNeighborZones;
         let hasAliveInnerZone = false;
@@ -12303,6 +13175,7 @@ const {
   TIPS,
   GEM_QUEST_NAMES,
   HOLIDAY_SPARKLE_NAMES,
+  SHAPE_LEVEL_NAMES,
   SHOP_CAPSULES,
   CONTINUE_COST_COINS,
   CONTINUE_EXTRA_SHOTS,
@@ -15076,7 +15949,10 @@ class PearlGemEngine {
     for (let l = 0; l < layerPearls.length; l++) {
       if (this.sphere.layerAliveCounts && this.sphere.layerAliveCounts[l] <= 0) continue;
       const lRadius = (layerDefs[l] ? layerDefs[l].radius : 5.0) * sc;
-      if (Math.abs(dCenter - lRadius) > ballR + 0.68) continue;
+      if (layerDefs[l] && layerDefs[l].rMin !== undefined) {
+        // 造型关：该层珍珠分布在 [rMin, radius] 的径向区间内，而不是单一球壳
+        if (dCenter > lRadius + ballR + 0.68 || dCenter < layerDefs[l].rMin * sc - ballR - 0.68) continue;
+      } else if (Math.abs(dCenter - lRadius) > ballR + 0.68) continue;
 
       const arr = layerPearls[l];
       // Level.IsInnerLayerIntact + BallShooter.aimHitboxWidth (0.25):
@@ -15513,6 +16389,11 @@ class PearlGemEngine {
       if (nextIdx >= HOLIDAY_SPARKLE_NAMES.length && !this.storage.data.holidayEnvelopeOpened) {
         triggerEnvelopeOutroAfterWin = true;
       }
+    } else if (modeTag === 'shape') {
+      // 造型关是独立扩展关卡：只记录通关，不推进主线进度
+      const cleared = Array.isArray(this.storage.data.shapeLevelsCleared) ? this.storage.data.shapeLevelsCleared : [];
+      if (cleared.indexOf(this.levelDescriptor.configName) < 0) cleared.push(this.levelDescriptor.configName);
+      this.storage.data.shapeLevelsCleared = cleared;
     } else {
       const nextLvl = (this.levelDescriptor.globalLevel || 1) + 1;
       if (nextLvl > (this.storage.data.maxUnlockedLevel || 1)) {
@@ -15606,6 +16487,9 @@ class PearlGemEngine {
     }
     if (isCampaign) {
       this.startLevel(this.storage.data.level);
+    } else if (this.levelDescriptor.modeTag === 'shape' && SHAPE_LEVEL_NAMES[(this.levelDescriptor.shapeIndex || 0) + 1]) {
+      // 造型关连玩：通关后直接进入下一个造型
+      this.startLevel(this.levelDescriptor.globalLevel || 1, SHAPE_LEVEL_NAMES[this.levelDescriptor.shapeIndex + 1]);
     } else {
       this.enterMenu('home');
     }
@@ -16630,7 +17514,12 @@ module.exports = { PearlGemEngine };
         { labelZh: '3-26 瓦森首领决战', level: 72, cfg: 'Level_3-26_Warson' },
         { labelZh: '4-1 双阶岩石珍珠', level: 77, cfg: 'Level_4-1_BubbleRock_Tutorial' },
         { labelZh: '特殊关 · 贪吃蛇挑战', level: 26, cfg: 'Snake_01' },
-        { labelZh: '特殊关 · 珍珠奖励关', level: 15, cfg: 'Bonus_01' }
+        { labelZh: '特殊关 · 珍珠奖励关', level: 15, cfg: 'Bonus_01' },
+        { labelZh: '造型关 · 足球', level: 1, cfg: 'Shape_01_Football' },
+        { labelZh: '造型关 · 爱心', level: 1, cfg: 'Shape_02_Heart' },
+        { labelZh: '造型关 · 蘑菇', level: 1, cfg: 'Shape_03_Mushroom' },
+        { labelZh: '造型关 · 圣诞树', level: 1, cfg: 'Shape_04_Tree' },
+        { labelZh: '造型关 · 小黄鸭', level: 1, cfg: 'Shape_05_Duck' }
       ];
 
       function sp(name) {
