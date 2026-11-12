@@ -1292,7 +1292,7 @@
   z-index: 2;
   width: 100%;
   height: 100%;
-  padding: 12px 18px 10px;
+  padding: 12px 14px 10px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1305,28 +1305,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 0 6px;
+  gap: 7px;
+  padding: 0 4px;
   box-sizing: border-box;
 }
 
 .pg-capsule-icons {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
   flex-shrink: 0;
 }
 
 .pg-capsule-ball-icon {
-  width: 42px;
-  height: 42px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
 }
 
 .pg-capsule-title {
   color: #ffffff;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 900;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.58);
 }
@@ -1338,15 +1342,20 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 4px;
+  padding: 0 2px;
   box-sizing: border-box;
 }
 
 .pg-capsule-desc {
   flex: 1;
+  min-width: 0;
   font-size: 12px;
   font-weight: 900;
-  white-space: nowrap;
+  line-height: 1.25;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -4110,6 +4119,7 @@ const OFFICIAL_ATOMIC_CONFIG = deepFreeze({
     cancelViewportThresholdY: 0.10,
     specialBallCostsShot: true,
     autoReplaceExtinctColor: true,
+    autoReplaceUnreachableOuterColor: true,
     poleBiasAngleDeg: 20.0,
     doubleSwitchFirstCost: 0,
     doubleSwitchRepeatCost: 15,
@@ -4124,6 +4134,7 @@ const OFFICIAL_ATOMIC_CONFIG = deepFreeze({
     bubbleSpacingDivisor: 0.23,
     bubblePackingFactor: 0.85,
     goldenAngleRad: 2.399963229728653,
+    globalLink: 1.35,
     neighborDistMultiplier: 2.42,
     coreStarScaleSlope: 0.25,
     coreStarScaleIntercept: 1.75,
@@ -6299,7 +6310,7 @@ function getWorldRangeForGlobalLevel(globalLevel) {
   }
   const last = WORLD_RANGES[WORLD_RANGES.length - 1];
   const overflow = lvl - last.endGlobal;
-  const wrappedIdx = (overflow - 1) % WORLDS.length;
+  const wrappedIdx = Math.floor((overflow - 1) / 15) % WORLDS.length;
   const w = WORLDS[wrappedIdx];
   return {
     worldIndex: wrappedIdx + 1,
@@ -6354,7 +6365,7 @@ function computeOfficialShotBudget(layers, startRadius, colorCount, shieldCfg, r
  *     ballsLeft = 99999999 (infinite shots; shooter ready-ball number hidden per CMP W8, #0x3E7)
  *     unless modConfig.shotBudget.tutorialInfiniteShots === false.
  * - levelConfig.balls > 0 (Hand-tuned campaign / Daily / GemQuest / HolidaySparkle):
- *     balls = explicitBalls + shieldExtraBalls (topped up if noStar && explicitBalls < minZones).
+ *     balls = explicitBalls + shieldExtraBalls.
  * - levelConfig.balls < 0 or procedural auto level:
  *     minZones = unexploded ColorZones across all layers
  *     Generous Voronoi-aware shot budget with small-sphere cushion (so 5-10 zone multi-layer spheres
@@ -6385,11 +6396,7 @@ function computeDynamicShotBudgetFromSphere(sphere, desc, modConfig = null) {
     : Math.max(1, sphere.colorZones ? sphere.colorZones.length : 14);
 
   if (desc.explicitBalls && desc.explicitBalls > 0) {
-    let fixedBalls = desc.explicitBalls;
-    if (desc.noStar && fixedBalls < minBalls) {
-      fixedBalls = minBalls + 4;
-    }
-    return fixedBalls + (Number(desc.shieldExtraBalls) || 0);
+    return desc.explicitBalls + (Number(desc.shieldExtraBalls) || 0);
   }
 
   const zoneMult = Number.isFinite(shotCfg.zoneShotMultiplier) ? shotCfg.zoneShotMultiplier : 1.35;
@@ -6517,7 +6524,7 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     propChance = rawCfg.propChance || 0;
     rockChance = rawCfg.rockChance || 0;
     colorBomb = !!rawCfg.colorBomb;
-    noStar = levelType === 1 || levelType === 4;
+    noStar = levelType === 1 || levelType === 4 || !!rawCfg.noStar;
     noSwitch =
       levelType === 1 ||
       !!rawCfg.noSwitch ||
@@ -6654,14 +6661,17 @@ function resolveLevelDescriptor(globalLevel = 1, explicitConfigName = null, acti
     const rotDegPerSec = rotSpeeds && rotSpeeds[l] !== undefined
       ? (parallax && l % 2 === 1 ? -Math.abs(rotSpeeds[l]) : rotSpeeds[l])
       : (rotPattern === 'yoyo' ? 24.0 : 14.0);
-    // Level.Build seedsCount: preserve hand-authored high minSeeds/maxSeeds (e.g. Level_1-15 minS=20, maxS=30 on r=8)
+    // Level.Build seedsCount (Level_Build.asm 0x023DD624-0x023DD6DC): cap at 2 * floor(rWorld) (+ extraSeeds when rWorld >= 10)
     let seeds;
     if (minSeeds < maxSeeds) {
       const halfR = Math.floor(rWorld / 2);
       seeds = rWorld < 4
         ? halfR + 2 + Math.floor(rng() * 6)
         : halfR + minSeeds + Math.floor(rng() * Math.max(1, Math.floor(rWorld) + maxSeeds - minSeeds));
-      seeds = Math.min(Math.max(maxSeeds, Math.floor(rWorld) * 2), Math.max(minSeeds, seeds));
+      seeds = Math.max(1, Math.min(Math.floor(rWorld) * 2, seeds));
+      if (rWorld >= 10 && rawCfg && rawCfg.extraSeeds) {
+        seeds += rawCfg.extraSeeds;
+      }
     } else {
       seeds = Math.max(1, minSeeds);
     }
@@ -8610,8 +8620,10 @@ class PearlSphere {
         this.clearableTotal++;
       }
 
-      // Fast O(N * W) band-window neighbor graph exploiting Fibonacci Y-ordering
-      const maxNeighborDist = pearlRadius * 2.52;
+      // Fast O(N * W) band-window neighbor graph matching SphereLayer.globalLink = 1.35f (SphereLayer..ctor)
+      const sphCfg = (this.modConfig && this.modConfig.sphere) || OFFICIAL_ATOMIC_CONFIG.sphere;
+      const globalLink = Number.isFinite(sphCfg.globalLink) ? sphCfg.globalLink : 1.35;
+      const maxNeighborDist = Math.max(globalLink, pearlRadius * 2.52);
       const threshSq = maxNeighborDist * maxNeighborDist;
       const win = Math.ceil(((maxNeighborDist + 0.65) * count) / (2 * radius)) + 10;
       for (let i = 0; i < shellList.length; i++) {
@@ -9356,18 +9368,66 @@ class PearlSphere {
   }
 
   /**
+   * Returns index of the outermost layer with at least one unexploded non-rock ColorZone, or -1.
+   */
+  getOutermostPlayableLayer() {
+    if (this.isSnakeLevel) {
+      return this.pearls.some((p) => p.alive) ? 0 : -1;
+    }
+    for (let l = 0; l < this.layerColorZones.length; l++) {
+      const zones = this.layerColorZones[l] || [];
+      if (zones.some((cz) => !cz.hasRock && cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb))) {
+        return l;
+      }
+    }
+    for (let l = 0; l < this.layerPearls.length; l++) {
+      const shell = this.layerPearls[l] || [];
+      if (shell.some((p) => p.alive && !p.hasRock && !p.isColorBomb)) {
+        return l;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Checks whether colorId exists on any playable non-rock zone/pearl in layerIdx.
+   */
+  isColorAliveInLayer(layerIdx, colorId) {
+    if (!colorId || layerIdx < 0) return false;
+    if (this.isSnakeLevel) {
+      return layerIdx === 0 && this.pearls.some((p) => p.alive && p.color && p.color.id === colorId);
+    }
+    const zones = this.layerColorZones[layerIdx] || [];
+    for (let i = 0; i < zones.length; i++) {
+      const cz = zones[i];
+      if (cz.hasRock || !cz.color || cz.color.id !== colorId) continue;
+      if (cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb)) {
+        return true;
+      }
+    }
+    const shell = this.layerPearls[layerIdx] || [];
+    return shell.some((p) => p.alive && !p.hasRock && !p.isColorBomb && p.color && p.color.id === colorId);
+  }
+
+  /**
    * SphereLayer.AdjustColorForPoleBias(layer, originalColor, skipColors):
    * If originalColor only exists on polar caps in layerIdx, substitutes a non-pole color
-   * from layerIdx (or falls back to next inner layer layerIdx + 1).
+   * from layerIdx (retrying without skipColorIds before peeking a breached inner layer).
    */
   adjustColorForPoleBias(layerIdx, originalColor, skipColorIds = null, rngFn = Math.random) {
     if (!originalColor || this.isSnakeLevel) return originalColor;
     if (!this.colorOnlyOnPolesInLayer(layerIdx, originalColor.id)) {
       return originalColor;
     }
-    const sameLayerRep = this.tryGetNonPoleColorInLayer(layerIdx, originalColor.id, skipColorIds, rngFn);
+    const sameLayerRep =
+      this.tryGetNonPoleColorInLayer(layerIdx, originalColor.id, skipColorIds, rngFn) ||
+      this.tryGetNonPoleColorInLayer(layerIdx, originalColor.id, null, rngFn);
     if (sameLayerRep) return sameLayerRep;
-    if (layerIdx + 1 < this.layerColorZones.length) {
+    const shell = this.layerPearls[layerIdx] || [];
+    const aliveInLayer = this.layerAliveCounts && this.layerAliveCounts[layerIdx] !== undefined
+      ? this.layerAliveCounts[layerIdx]
+      : shell.filter((p) => p.alive).length;
+    if (layerIdx + 1 < this.layerColorZones.length && shell.length > 0 && aliveInLayer < shell.length * 0.65) {
       const innerLayerRep = this.tryGetNonPoleColorInLayer(layerIdx + 1, originalColor.id, skipColorIds, rngFn);
       if (innerLayerRep) return innerLayerRep;
     }
@@ -9377,8 +9437,8 @@ class PearlSphere {
   /**
    * BallShooter.GetBestColorInternal(skipColors):
    * Selects a candidate unexploded non-rock ColorZone from the outermost active layer
-   * (excluding skipColorIds when possible) and applies AdjustColorForPoleBias if the chosen
-   * zone is a pole zone or its color only exists on the poles in that layer.
+   * (excluding skipColorIds when possible) and applies AdjustColorForPoleBias without
+   * leaking unexposed inner-layer colors while the outer layer is intact.
    */
   getBestShooterColor(skipColorIds = null, rngFn = Math.random) {
     if (this.isSnakeLevel) this._rebuildSnakeZones();
@@ -9390,16 +9450,9 @@ class PearlSphere {
           ? new Set([skipColorIds])
           : new Set();
 
-    let targetLayer = -1;
-    for (let l = 0; l < this.layerColorZones.length; l++) {
-      const zones = this.layerColorZones[l] || [];
-      if (zones.some((cz) => !cz.hasRock && cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb))) {
-        targetLayer = l;
-        break;
-      }
-    }
+    const targetLayer = this.getOutermostPlayableLayer();
 
-    if (targetLayer >= 0) {
+    if (targetLayer >= 0 && !this.isSnakeLevel) {
       const layerZones = (this.layerColorZones[targetLayer] || []).filter(
         (cz) => !cz.hasRock && cz.pearls.some((p) => p.alive && !p.hasRock && !p.isColorBomb)
       );
@@ -9409,10 +9462,9 @@ class PearlSphere {
       if (filtered.length > 0) {
         const chosenZone = filtered[Math.floor(rngFn() * filtered.length)];
         if (chosenZone.isPoleZone || this.colorOnlyOnPolesInLayer(targetLayer, chosenZone.color.id)) {
-          const nonPole = this.tryGetNonPoleColorInLayer(targetLayer, chosenZone.color.id, skipSet, rngFn)
-            || (targetLayer + 1 < this.layerColorZones.length
-              ? this.tryGetNonPoleColorInLayer(targetLayer + 1, chosenZone.color.id, skipSet, rngFn)
-              : null);
+          const nonPole =
+            this.tryGetNonPoleColorInLayer(targetLayer, chosenZone.color.id, skipSet, rngFn) ||
+            this.tryGetNonPoleColorInLayer(targetLayer, chosenZone.color.id, null, rngFn);
           if (nonPole) return nonPole;
         }
         return this.adjustColorForPoleBias(targetLayer, chosenZone.color, skipSet, rngFn);
@@ -9433,20 +9485,14 @@ class PearlSphere {
   getRemainingColorPool() {
     const allCounts = new Map();
     const nonPoleCounts = new Map();
-    let targetLayer = -1;
-    for (let l = 0; l < this.layerPearls.length; l++) {
-      if (this.layerPearls[l].some((p) => p.alive && !p.hasRock && !p.isColorBomb)) {
-        targetLayer = l;
-        break;
-      }
-    }
+    const targetLayer = this.getOutermostPlayableLayer();
     for (let i = 0; i < this.pearls.length; i++) {
       const p = this.pearls[i];
       if (!p.alive || p.hasRock || p.isColorBomb) continue;
-      if (targetLayer >= 0 && p.layer !== targetLayer) continue;
+      if (!this.isSnakeLevel && targetLayer >= 0 && p.layer !== targetLayer) continue;
       allCounts.set(p.color.id, (allCounts.get(p.color.id) || 0) + 1);
       const inPoleZone = p.colorZone && p.colorZone.isPoleZone;
-      if (!inPoleZone && Math.abs(p.worldDir.y) <= POLE_COS_20_DEG) {
+      if (this.isSnakeLevel || (!inPoleZone && Math.abs(p.worldDir.y) <= POLE_COS_20_DEG)) {
         nonPoleCounts.set(p.color.id, (nonPoleCounts.get(p.color.id) || 0) + 1);
       }
     }
@@ -10940,7 +10986,10 @@ class WebGLPearlRenderer {
     this._instData = new Float32Array(MAX_INSTANCES * INST_FLOATS);
     this._instBuf = null;
     this._instCount = 0;
+    this._instEngine = null;
+    this._instTimeSec = 0;
     this.lastDrawCalls = 0;
+    this.lastSubmittedInstances = 0;
     this._initWebGL();
   }
 
@@ -11454,12 +11503,20 @@ class WebGLPearlRenderer {
     }
   }
 
-  _beginSphereInstances() {
+  _beginSphereInstances(engine = null, timeSec = 0) {
     this._instCount = 0;
+    this._instEngine = engine;
+    this._instTimeSec = timeSec;
   }
 
   _pushSphereInstance(x, y, z, scale, r, g, b, a, matType, highlight, layerShade) {
-    if (this._instCount >= MAX_INSTANCES) return;
+    if (this._instCount >= MAX_INSTANCES) {
+      if (this._instEngine) {
+        this._flushSphereInstances(this._instEngine, this._instTimeSec);
+      } else {
+        return;
+      }
+    }
     const o = this._instCount * INST_FLOATS;
     const d = this._instData;
     d[o] = x;
@@ -11479,6 +11536,7 @@ class WebGLPearlRenderer {
   _flushSphereInstances(engine, timeSec) {
     const count = this._instCount;
     if (count <= 0) return;
+    this.lastSubmittedInstances += count;
     const gl = this.gl;
     const sphereHandle = this._getGpuMesh('sphere_pearl') || this._getGpuMesh('sphere_med');
     if (!sphereHandle) return;
@@ -11678,6 +11736,7 @@ class WebGLPearlRenderer {
     }
 
     this.lastDrawCalls = 0;
+    this.lastSubmittedInstances = 0;
     const gl = this.gl;
     const loc = this.meshLoc;
     const pw = this.canvas.width || Math.round(engine.width * engine.dpr);
@@ -11770,7 +11829,7 @@ class WebGLPearlRenderer {
 
   _renderParticlesBatch(engine, timeSec) {
     if (!engine.particles || engine.particles.length === 0) return;
-    this._beginSphereInstances();
+    this._beginSphereInstances(engine, timeSec);
     for (let i = 0; i < engine.particles.length; i++) {
       const pt = engine.particles[i];
       const s = pt.size * Math.max(0, pt.life / pt.maxLife);
@@ -11790,7 +11849,7 @@ class WebGLPearlRenderer {
     const loc = this.meshLoc;
 
     // 1. Perspective falling multi-colored pearls & splash particles
-    this._beginSphereInstances();
+    this._beginSphereInstances(engine, timeSec);
     if (engine.fallingPearls) {
       for (let i = 0; i < engine.fallingPearls.length; i++) {
         const fp = engine.fallingPearls[i];
@@ -12753,10 +12812,48 @@ class WebGLPearlRenderer {
       mode: 0.0
     });
 
-    // 2E. 1-Draw-Call Hardware Instanced Sphere Batch
-    this._beginSphereInstances();
+    // 2E. Multi-Batch Hardware Instanced Sphere Batch (dynamic objects first, auto-flushing past MAX_INSTANCES)
+    this._beginSphereInstances(engine, timeSec);
     const propellerPearls = [];
     const bonusCoinPearls = [];
+
+    for (let i = 0; i < engine.fallingPearls.length; i++) {
+      const fp = engine.fallingPearls[i];
+      const rgb = fp.color.rgb;
+      this._pushSphereInstance(fp.pos.x, fp.pos.y, fp.pos.z, fp.radius, rgb[0], rgb[1], rgb[2], 1.0, 0.0, 0.0, 1.0);
+    }
+
+    for (let i = 0; i < engine.flyingBalls.length; i++) {
+      const fb = engine.flyingBalls[i];
+      if (fb.booster === 'bomb') continue;
+      const rgb = fb.booster === 'propeller' ? [0.22, 0.85, 1.0] : fb.color.rgb;
+      const mType = fb.booster === 'rainbow' ? 2.0 : fb.booster === 'propeller' ? 7.0 : 0.0;
+      this._pushSphereInstance(fb.pos.x, fb.pos.y, fb.pos.z, fb.radius, rgb[0], rgb[1], rgb[2], 1.0, mType, 0.0, 1.0);
+    }
+
+    for (let i = 0; i < engine.homingMissiles.length; i++) {
+      const hm = engine.homingMissiles[i];
+      const rgb = hm.color.rgb;
+      this._pushSphereInstance(hm.pos.x, hm.pos.y, hm.pos.z, 0.42, rgb[0], rgb[1], rgb[2], 1.0, 7.0, 0.0, 1.0);
+    }
+
+    // Hovering ColorBomb orb in Phase 1 & 2 before final explosion!
+    if (engine.activeColorBomb && engine.activeColorBomb.pos) {
+      const cb = engine.activeColorBomb;
+      this._pushSphereInstance(cb.pos.x, cb.pos.y, cb.pos.z, 0.78, 0.35, 0.96, 1.0, 1.0, 1.0, 0.6, 1.0);
+      glows.push({
+        pos: cb.pos,
+        radius: 2.35,
+        rgba: [0.42, 0.96, 1.0, 0.82],
+        mode: 2.0
+      });
+    }
+
+    for (let i = 0; i < engine.particles.length; i++) {
+      const pt = engine.particles[i];
+      const s = pt.size * Math.max(0, pt.life / pt.maxLife);
+      this._pushSphereInstance(pt.pos.x, pt.pos.y, pt.pos.z, s, pt.rgb[0], pt.rgb[1], pt.rgb[2], 1.0, 5.0, 0.0, 1.0);
+    }
 
     if (sphere) {
       const pearls = sphere.pearls;
@@ -12800,44 +12897,6 @@ class WebGLPearlRenderer {
           });
         }
       }
-    }
-
-    for (let i = 0; i < engine.fallingPearls.length; i++) {
-      const fp = engine.fallingPearls[i];
-      const rgb = fp.color.rgb;
-      this._pushSphereInstance(fp.pos.x, fp.pos.y, fp.pos.z, fp.radius, rgb[0], rgb[1], rgb[2], 1.0, 0.0, 0.0, 1.0);
-    }
-
-    for (let i = 0; i < engine.flyingBalls.length; i++) {
-      const fb = engine.flyingBalls[i];
-      if (fb.booster === 'bomb') continue;
-      const rgb = fb.booster === 'propeller' ? [0.22, 0.85, 1.0] : fb.color.rgb;
-      const mType = fb.booster === 'rainbow' ? 2.0 : fb.booster === 'propeller' ? 7.0 : 0.0;
-      this._pushSphereInstance(fb.pos.x, fb.pos.y, fb.pos.z, fb.radius, rgb[0], rgb[1], rgb[2], 1.0, mType, 0.0, 1.0);
-    }
-
-    for (let i = 0; i < engine.homingMissiles.length; i++) {
-      const hm = engine.homingMissiles[i];
-      const rgb = hm.color.rgb;
-      this._pushSphereInstance(hm.pos.x, hm.pos.y, hm.pos.z, 0.42, rgb[0], rgb[1], rgb[2], 1.0, 7.0, 0.0, 1.0);
-    }
-
-    // Hovering ColorBomb orb in Phase 1 & 2 before final explosion!
-    if (engine.activeColorBomb && engine.activeColorBomb.pos) {
-      const cb = engine.activeColorBomb;
-      this._pushSphereInstance(cb.pos.x, cb.pos.y, cb.pos.z, 0.78, 0.35, 0.96, 1.0, 1.0, 1.0, 0.6, 1.0);
-      glows.push({
-        pos: cb.pos,
-        radius: 2.35,
-        rgba: [0.42, 0.96, 1.0, 0.82],
-        mode: 2.0
-      });
-    }
-
-    for (let i = 0; i < engine.particles.length; i++) {
-      const pt = engine.particles[i];
-      const s = pt.size * Math.max(0, pt.life / pt.maxLife);
-      this._pushSphereInstance(pt.pos.x, pt.pos.y, pt.pos.z, s, pt.rgb[0], pt.rgb[1], pt.rgb[2], 1.0, 5.0, 0.0, 1.0);
     }
 
     this._flushSphereInstances(engine, timeSec);
@@ -13185,7 +13244,17 @@ const {
   resolveLevelDescriptor,
   buildCustomLevelDescriptor
 } = require('./levels');
-const { createCamera, dist3, distSq3, sub3, norm3, hexToRgb01 } = require('./math3d');
+const {
+  createCamera,
+  dist3,
+  distSq3,
+  dot3,
+  sub3,
+  norm3,
+  quatFromAxisAngle,
+  rotateVecByQuat,
+  hexToRgb01
+} = require('./math3d');
 const {
   OFFICIAL_ATOMIC_CONFIG,
   MOD_PRESETS,
@@ -13207,6 +13276,7 @@ const GRAVITY_Y = -20.0;
 const BALL_RADIUS = 0.40;
 // BallShooter.aimHitboxWidth = 0.25 (monobehaviour_params.json) for pass-through clearance on breached outer shells
 const AIM_HITBOX_WIDTH = 0.25;
+const SHIELD_COS_HALF = Math.cos(0.31);
 const STAR_MAX_HITS = 5;
 // BallShooter.ShootBall: DOVirtual.DelayedCall(0.25f, AddBall) before the next ball exists
 const RELOAD_COOLDOWN = 0.25;
@@ -13879,7 +13949,7 @@ class PearlGemEngine {
       this.startLevel(26, 'Snake_01');
     } else if (action === 'warson_boss') {
       this.debugPanelOpen = false;
-      this.startLevel(56, 'Level_3-26_Warson');
+      this.startLevel(72, 'Level_3-26_Warson');
     } else if (action === 'rock') {
       this.debugPanelOpen = false;
       this.startLevel(77, 'Level_4-1_BubbleRock_Tutorial');
@@ -13960,6 +14030,9 @@ class PearlGemEngine {
     }
     if (desc.patternType === 2 && cah >= stripesCap + 1) {
       cah = stripesCap;
+    }
+    if (!desc.noStar && this.shotsLeft > 0 && this.shotsLeft <= 6 && cah >= this.shotsLeft) {
+      cah = Math.max(2, this.shotsLeft - 1);
     }
     this.coreActivateHits = cah;
     this.starMaxHits = cah;
@@ -14210,10 +14283,17 @@ class PearlGemEngine {
 
   _rollInitialBalls() {
     this._shooterQueueCursor = 0;
+    this._lastPlayableOuterLayer = this.sphere && typeof this.sphere.getOutermostPlayableLayer === 'function'
+      ? this.sphere.getOutermostPlayableLayer()
+      : 0;
     this.currentBallColor = this._pickFromFixedQueueOrPool(null);
     this.nextBallColor = this._pickFromFixedQueueOrPool(
       this.currentBallColor ? this.currentBallColor.id : null
     );
+    const q = this.levelDescriptor && this.levelDescriptor.fixedShooterQueue;
+    if (!Array.isArray(q) || q.length === 0) {
+      this._replaceShooterBallsIfColorNotExisting();
+    }
   }
 
   _advanceBallQueue() {
@@ -14228,13 +14308,17 @@ class PearlGemEngine {
     this.nextBallColor = this._pickFromFixedQueueOrPool(
       this.currentBallColor ? this.currentBallColor.id : null
     );
+    if (!hasMoreFixed && (!Array.isArray(q) || q.length === 0)) {
+      this._replaceShooterBallsIfColorNotExisting();
+    }
   }
 
   /**
-   * BallShooter.ReplaceSecondaryBallIfColorNotExisting():
-   * Whenever ColorZones explode or cascade, checks whether the held primary (currentBallColor)
-   * or secondary (nextBallColor) ball's color has gone completely extinct on the sphere.
-   * Any extinct color is immediately replaced via getBestShooterColor with a scale pop animation!
+   * BallShooter.ReplaceSecondaryBallIfColorNotExisting() + outer-layer reachability guard:
+   * 1) Replaces any held primary/secondary ball whose color has gone completely extinct on the sphere.
+   * 2) When modConfig.shooter.autoReplaceUnreachableOuterColor !== false, also refreshes held balls if
+   *    an outer shell just cleared or neither held ball exists on the current outermost playable layer
+   *    (or primary ball is absent on noSwitch stages), preventing forced dead-ball waste.
    */
   _replaceShooterBallsIfColorNotExisting() {
     const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
@@ -14255,6 +14339,50 @@ class PearlGemEngine {
       this.nextBallColor = this.sphere.getBestShooterColor(skip);
       replaced = true;
     }
+
+    if (
+      shooterCfg.autoReplaceUnreachableOuterColor !== false &&
+      !this.sphere.isSnakeLevel &&
+      typeof this.sphere.getOutermostPlayableLayer === 'function'
+    ) {
+      const outerL = this.sphere.getOutermostPlayableLayer();
+      if (outerL >= 0) {
+        const outerChanged =
+          typeof this._lastPlayableOuterLayer === 'number' &&
+          this._lastPlayableOuterLayer >= 0 &&
+          this._lastPlayableOuterLayer !== outerL;
+        this._lastPlayableOuterLayer = outerL;
+
+        let curInOuter = this.currentBallColor && this.sphere.isColorAliveInLayer(outerL, this.currentBallColor.id);
+        let nextInOuter = this.nextBallColor && this.sphere.isColorAliveInLayer(outerL, this.nextBallColor.id);
+        const noSwitch = !!(this.levelDescriptor && this.levelDescriptor.noSwitch);
+
+        if (noSwitch) {
+          if (!curInOuter) {
+            this.currentBallColor = this.sphere.getBestShooterColor(null);
+            replaced = true;
+          }
+        } else if (!curInOuter && !nextInOuter) {
+          this.currentBallColor = this.sphere.getBestShooterColor(null);
+          const skip = this.currentBallColor ? [this.currentBallColor.id] : null;
+          this.nextBallColor = this.sphere.getBestShooterColor(skip);
+          replaced = true;
+        } else if (outerChanged) {
+          if (!curInOuter) {
+            const skip = nextInOuter && this.nextBallColor ? [this.nextBallColor.id] : null;
+            this.currentBallColor = this.sphere.getBestShooterColor(skip);
+            curInOuter = true;
+            replaced = true;
+          }
+          if (!nextInOuter) {
+            const skip = this.currentBallColor ? [this.currentBallColor.id] : null;
+            this.nextBallColor = this.sphere.getBestShooterColor(skip);
+            replaced = true;
+          }
+        }
+      }
+    }
+
     if (replaced) {
       this.swapAnim = Math.max(this.swapAnim || 0, 0.65);
     }
@@ -14759,58 +14887,176 @@ class PearlGemEngine {
     const vy = (dy - 0.5 * gravityY * flightT * flightT) / flightT;
     this.aimVelocity = { x: vx, y: vy, z: vz };
 
-    // BallShooter.ShowTrajectory: trajectoryPointCount = 60, trajectoryTimeStep = 0.025 (2 substeps of 0.0125s),
-    // stops when z > center.z + 0.75 * activeOuterRadius
+    // BallShooter.ShowTrajectory + frame-accurate future-pose collision prediction:
+    // trajectoryPointCount = 60, trajectoryTimeStep = 0.025 (6 substeps of 1/240s = 4 substeps per 60Hz frame),
+    // matching _stepFlyingBalls(1/60) integration and sphere.step(1/60) rotation/orbit updates step-for-step!
     const trajPointCount = Math.max(2, Math.floor(shooterCfg.trajectoryPointCount || 60));
     const trajStep = Number.isFinite(shooterCfg.trajectoryTimeStep) ? shooterCfg.trajectoryTimeStep : 0.025;
+    const subStepsPerTraj = 6;
+    const subDt = trajStep / subStepsPerTraj;
+    const frameDt = 4 * subDt;
     const pts = [];
-    const subDt = trajStep * 0.5;
     let px = start.x, py = start.y, pz = start.z;
     let cvx = vx, cvy = vy, cvz = vz;
     let hitPearl = null;
     const ballR = Number.isFinite(shooterCfg.readyBallRadius) ? shooterCfg.readyBallRadius : BALL_RADIUS;
-    const maxZ = center.z + (this.activeMaxR || 6.0) * 0.75;
+    const maxZ = center.z + (this.activeMaxR || 6.0) * 0.95;
+
+    const sphere = this.sphere;
+    const layerCount = sphere.layerPearls ? sphere.layerPearls.length : 0;
+    const deltaLayerAngles = new Float64Array(layerCount);
+    const invLayerQuats = new Array(layerCount).fill(null);
+    let deltaShieldAngle = 0;
+    let invShieldQuat = null;
+    let simElapsed = 0;
+    let simRotElapsed = sphere.rotElapsed || 0;
+    let simSpawnScale = sc;
+    let simSnakeProg = sphere.snakeProgress || 0;
+    const targetOuterR = sphere.getCurrentOuterRadius();
+    const shieldTargetR = targetOuterR + 0.82;
+    const shieldOrbitR = sphere.shields.map((sh) => sh.orbitRadius);
+    const satOrbitR = sphere.satellites.map((sat) => sat.orbitRadius);
+    const wb = sphere.warsonBoss && sphere.warsonBoss.active && !sphere.warsonBoss.retreating ? sphere.warsonBoss : null;
+    let wbPhase = wb ? wb.phase : 0;
+    const snakeAlivePearls = sphere.isSnakeLevel
+      ? (sphere.layerPearls[0] || []).filter((p) => p.alive)
+      : null;
 
     let hitCoreStar = false;
+    let totalSub = 0;
     for (let step = 0; step < trajPointCount; step++) {
       pts.push({ x: px, y: py, z: pz });
       let collided = false;
-      for (let sub = 0; sub < 2; sub++) {
+      for (let sub = 0; sub < subStepsPerTraj; sub++) {
+        // engine.step(dt) advances sphere.step(dt) once per 4 physics substeps BEFORE _stepFlyingBalls(dt)
+        if (totalSub % 4 === 0 && !this.inGameSettingsOpen) {
+          simElapsed += frameDt;
+          if (simSpawnScale < 1.0) {
+            simSpawnScale = Math.min(1.0, simSpawnScale + frameDt * 3.8);
+          }
+          if (!sphere.editorFreezeRotation) {
+            simRotElapsed += frameDt;
+            if (sphere.isSnakeLevel) {
+              if (snakeAlivePearls && snakeAlivePearls.length > 0 && !sphere.snakeReachedEnd) {
+                simSnakeProg = Math.min(1.0, simSnakeProg + sphere.snakeSpeed * frameDt);
+              }
+            } else {
+              const rotMod = sphere.rotPattern === 'yoyo' ? Math.cos(simRotElapsed * 1.32) * 1.35 : 1.0;
+              for (let l = 0; l < layerCount; l++) {
+                deltaLayerAngles[l] += (sphere.layerSpeeds[l] || 0) * rotMod * frameDt;
+                invLayerQuats[l] = quatFromAxisAngle(sphere.rotAxis, -deltaLayerAngles[l]);
+              }
+              deltaShieldAngle += (sphere.shieldRotSpeed || 0) * frameDt;
+              invShieldQuat = quatFromAxisAngle(sphere.shieldRotAxis, -deltaShieldAngle);
+            }
+          }
+          const shLerp = Math.min(1, frameDt * 4.2);
+          for (let i = 0; i < shieldOrbitR.length; i++) {
+            shieldOrbitR[i] += (shieldTargetR - shieldOrbitR[i]) * shLerp;
+          }
+          const satLerp = Math.min(1, frameDt * 3.8);
+          for (let i = 0; i < satOrbitR.length; i++) {
+            const satTargetR = targetOuterR + 1.38 + (sphere.satellites[i].ringOffset || 0);
+            satOrbitR[i] += (satTargetR - satOrbitR[i]) * satLerp;
+          }
+          if (wb) {
+            wbPhase += frameDt * 1.15;
+          }
+        }
+        totalSub++;
+
         px += cvx * subDt;
         py += cvy * subDt;
         pz += cvz * subDt;
         cvy += gravityY * subDt;
         const curPos = { x: px, y: py, z: pz };
 
-        if (this.sphere.checkWarsonCollision(curPos, ballR)) {
+        if (wb) {
+          const patrolW = Math.max(2.1, targetOuterR * 0.56);
+          const wbPos = {
+            x: center.x + Math.sin(wbPhase) * patrolW,
+            y: center.y + 0.25 + Math.sin(wbPhase * 2.0) * 0.92,
+            z: center.z - targetOuterR - 1.95 + Math.cos(wbPhase) * 0.35
+          };
+          const rSum = ballR + wb.radius;
+          if (distSq3(curPos, wbPos) <= rSum * rSum) {
+            pts.push(curPos);
+            collided = true;
+            break;
+          }
+        }
+
+        let hitSat = false;
+        for (let i = 0; i < sphere.satellites.length; i++) {
+          const sat = sphere.satellites[i];
+          if (!sat.alive) continue;
+          const r = satOrbitR[i] * simSpawnScale;
+          const ang = sat.angle + sat.speed * simElapsed;
+          const bob = Math.sin((sat.bobPhase || 0) + simElapsed * 2.6) * 0.16;
+          const satPos = {
+            x: center.x + Math.cos(ang) * r,
+            y: center.y + Math.sin(ang) * Math.sin(sat.tilt) * r + bob,
+            z: center.z - Math.sin(ang) * Math.cos(sat.tilt) * r
+          };
+          const rSum = ballR + sat.radius;
+          if (distSq3(curPos, satPos) <= rSum * rSum) {
+            hitSat = true;
+            break;
+          }
+        }
+        if (hitSat) {
           pts.push(curPos);
           collided = true;
           break;
         }
-        if (this.sphere.checkSatelliteCollision(curPos, ballR)) {
-          pts.push(curPos);
-          collided = true;
-          break;
+
+        if (sphere.shields.length > 0) {
+          const relSh = sub3(curPos, center);
+          const distCenterSh = Math.hypot(relSh.x, relSh.y, relSh.z);
+          if (distCenterSh >= 0.5) {
+            const unitBallDir = { x: relSh.x / distCenterSh, y: relSh.y / distCenterSh, z: relSh.z / distCenterSh };
+            const rotBallDir = invShieldQuat ? rotateVecByQuat(unitBallDir, invShieldQuat) : unitBallDir;
+            let hitShield = false;
+            for (let i = 0; i < sphere.shields.length; i++) {
+              const sh = sphere.shields[i];
+              if (!sh.alive) continue;
+              if (Math.abs(distCenterSh - shieldOrbitR[i] * simSpawnScale) <= ballR + 0.56) {
+                if (dot3(rotBallDir, sh.worldDir) >= SHIELD_COS_HALF) {
+                  hitShield = true;
+                  break;
+                }
+              }
+            }
+            if (hitShield) {
+              pts.push(curPos);
+              collided = true;
+              break;
+            }
+          }
         }
-        const sh = this.sphere.checkShieldCollision(curPos, ballR);
-        if (sh) {
-          pts.push(curPos);
-          collided = true;
-          break;
-        }
+
         if (
           !this.levelDescriptor.noStar &&
-          !this.sphere.isSnakeLevel &&
-          this.sphere.starActivated &&
-          !this.sphere.starHit &&
-          dist3(curPos, center) <= this.sphere.starRadius + ballR
+          !sphere.isSnakeLevel &&
+          sphere.starActivated &&
+          !sphere.starHit &&
+          dist3(curPos, center) <= sphere.starRadius + ballR + 0.18
         ) {
           hitCoreStar = true;
           pts.push(curPos);
           collided = true;
           break;
         }
-        const nearest = this._findCollidingPearl(curPos, ballR, rayHitLayer);
+
+        const nearest = this._findCollidingPearlAtPose(
+          curPos,
+          ballR,
+          rayHitLayer,
+          invLayerQuats,
+          simSpawnScale,
+          simSnakeProg,
+          snakeAlivePearls
+        );
         if (nearest) {
           hitPearl = nearest;
           pts.push(curPos);
@@ -14849,6 +15095,93 @@ class PearlGemEngine {
     } else {
       this.aimWillPop = false;
     }
+  }
+
+  _findCollidingPearlAtPose(pos, ballR, targetLayerHint, invLayerQuats, simSpawnScale, simSnakeProg, snakeAlivePearls) {
+    const center = this.sphere.center;
+    const sc0 = this.sphere.spawnScale || 1.0;
+    const shooterCfg = (this.modConfig && this.modConfig.shooter) || OFFICIAL_ATOMIC_CONFIG.shooter;
+    const aimHitbox = Number.isFinite(shooterCfg.aimHitboxWidth) ? shooterCfg.aimHitboxWidth : AIM_HITBOX_WIDTH;
+
+    if (this.sphere.isSnakeLevel) {
+      const list = snakeAlivePearls || (this.sphere.layerPearls[0] || []).filter((p) => p.alive);
+      let best = null;
+      let bestDSq = Infinity;
+      const segSpacing = 0.0112;
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        const t = Math.max(0, simSnakeProg - (i + 1) * segSpacing);
+        const pt = this.sphere._sampleSnakeSpline(t);
+        const wx = center.x + (pt.x - center.x) * simSpawnScale;
+        const wy = center.y + (pt.y - center.y) * simSpawnScale;
+        const wz = center.z + (pt.z - center.z) * simSpawnScale;
+        const rSum = ballR + p.radius * 0.98;
+        const dx = pos.x - wx;
+        const dy = pos.y - wy;
+        const dz = pos.z - wz;
+        const dSq = dx * dx + dy * dy + dz * dz;
+        if (dSq <= rSum * rSum && dSq < bestDSq) {
+          bestDSq = dSq;
+          best = p;
+        }
+      }
+      return best;
+    }
+
+    const rel = {
+      x: pos.x - center.x,
+      y: pos.y - center.y,
+      z: pos.z - center.z
+    };
+    const dCenterSq = rel.x * rel.x + rel.y * rel.y + rel.z * rel.z;
+    const maxBound = (this.activeMaxR || 6.0) * simSpawnScale + ballR + 0.75;
+    if (dCenterSq > maxBound * maxBound) return null;
+
+    const dCenter = Math.sqrt(dCenterSq);
+    const invScale = sc0 / Math.max(1e-4, simSpawnScale);
+    const fwdScaleSq = (simSpawnScale / Math.max(1e-4, sc0)) * (simSpawnScale / Math.max(1e-4, sc0));
+    let best = null;
+    let bestDSq = Infinity;
+    const layerPearls = this.sphere.layerPearls;
+    const layerDefs = this.sphere.descriptor.layers;
+
+    for (let l = 0; l < layerPearls.length; l++) {
+      if (this.sphere.layerAliveCounts && this.sphere.layerAliveCounts[l] <= 0) continue;
+      const lRadius = (layerDefs[l] ? layerDefs[l].radius : 5.0) * simSpawnScale;
+      if (layerDefs[l] && layerDefs[l].rMin !== undefined) {
+        if (dCenter > lRadius + ballR + 0.68 || dCenter < layerDefs[l].rMin * simSpawnScale - ballR - 0.68) continue;
+      } else if (Math.abs(dCenter - lRadius) > ballR + 0.68) {
+        continue;
+      }
+
+      const arr = layerPearls[l];
+      const isOuterPassThrough =
+        (typeof targetLayerHint === 'number' && targetLayerHint > l) ||
+        (this.sphere.starActivated && !this.sphere.starHit && this.sphere.layerAliveCounts && this.sphere.layerAliveCounts[l] < arr.length);
+      const effBallR = isOuterPassThrough ? Math.min(ballR, aimHitbox) : ballR;
+
+      const invQ = invLayerQuats && invLayerQuats[l];
+      const rotRel = invQ ? rotateVecByQuat(rel, invQ) : rel;
+      const tx = center.x + rotRel.x * invScale;
+      const ty = center.y + rotRel.y * invScale;
+      const tz = center.z + rotRel.z * invScale;
+
+      for (let i = 0; i < arr.length; i++) {
+        const p = arr[i];
+        if (!p.alive) continue;
+        const rSum = effBallR + p.radius * 0.96;
+        const wp = p.worldPos;
+        const dx = tx - wp.x;
+        const dy = ty - wp.y;
+        const dz = tz - wp.z;
+        const worldDSq = (dx * dx + dy * dy + dz * dz) * fwdScaleSq;
+        if (worldDSq <= rSum * rSum && worldDSq < bestDSq) {
+          bestDSq = worldDSq;
+          best = p;
+        }
+      }
+    }
+    return best;
   }
 
   _fireBall() {
@@ -16395,7 +16728,11 @@ class PearlGemEngine {
       const cleared = Array.isArray(this.storage.data.shapeLevelsCleared) ? this.storage.data.shapeLevelsCleared : [];
       if (cleared.indexOf(this.levelDescriptor.configName) < 0) cleared.push(this.levelDescriptor.configName);
       this.storage.data.shapeLevelsCleared = cleared;
-    } else {
+    } else if (
+      !this.isCustomLevel &&
+      !this.levelDescriptor.isCustom &&
+      this.levelDescriptor.globalLevel === (this.storage.data.level || 1)
+    ) {
       const nextLvl = (this.levelDescriptor.globalLevel || 1) + 1;
       if (nextLvl > (this.storage.data.maxUnlockedLevel || 1)) {
         this.storage.data.maxUnlockedLevel = nextLvl;
@@ -16481,12 +16818,13 @@ class PearlGemEngine {
     }
 
     const isCampaign = !this.levelDescriptor.modeTag || this.levelDescriptor.modeTag === 'campaign';
+    const isPreviewStage = !!(this.isCustomLevel || this.levelDescriptor.isCustom);
     const snap = this.storage.getSnapshot();
-    if (isCampaign && (snap.unpouredPearls > 0 || snap.canCreateGem)) {
+    if (isCampaign && !this.isCustomLevel && (snap.unpouredPearls > 0 || snap.canCreateGem)) {
       this.enterMenu('gems', { postWinFlow: true });
       return;
     }
-    if (isCampaign) {
+    if (isCampaign && !isPreviewStage) {
       this.startLevel(this.storage.data.level);
     } else if (this.levelDescriptor.modeTag === 'shape' && SHAPE_LEVEL_NAMES[(this.levelDescriptor.shapeIndex || 0) + 1]) {
       // 造型关连玩：通关后直接进入下一个造型
@@ -16561,7 +16899,16 @@ class PearlGemEngine {
 
   retryCurrentLevel() {
     this.audio.playSfx('click');
-    const explicit = this.levelDescriptor.modeTag !== 'campaign' ? this.levelDescriptor.configName : null;
+    if (this.isCustomLevel && this.levelDescriptor) {
+      this.startCustomLevel(this.levelDescriptor, {
+        editorMode: this.editorMode,
+        freezeRotation: this.sphere ? this.sphere.editorFreezeRotation : false
+      });
+      return;
+    }
+    const explicit = (this.levelDescriptor.isCustom || this.levelDescriptor.modeTag !== 'campaign')
+      ? this.levelDescriptor.configName
+      : null;
     this.startLevel(this.levelDescriptor.globalLevel, explicit);
   }
 
@@ -19294,9 +19641,6 @@ module.exports = { PearlGemEngine };
           case 'jumpStage': {
             const lvl = Number(el.getAttribute('data-level') || 1);
             const cfg = el.getAttribute('data-cfg') || null;
-            if (lvl > (storage.data.maxUnlockedLevel || 1)) {
-              storage.update({ maxUnlockedLevel: lvl });
-            }
             if (cfg && Array.isArray(storage.data.seenTutorials)) {
               storage.data.seenTutorials = storage.data.seenTutorials.filter((k) => k !== cfg);
               storage.save();
@@ -19523,9 +19867,6 @@ module.exports = { PearlGemEngine };
         audio.syncBgm();
         const lvl = Number(btn.getAttribute('data-side-level') || 1);
         const cfg = btn.getAttribute('data-side-cfg') || null;
-        if (lvl > (storage.data.maxUnlockedLevel || 1)) {
-          storage.update({ maxUnlockedLevel: lvl });
-        }
         engine.startLevel(lvl, cfg);
       });
       document.getElementById('sideWxSimBtn')?.addEventListener('click', () => applyWeChatSafeMode(!wxSafeMode));
